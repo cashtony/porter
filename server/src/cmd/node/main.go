@@ -2,7 +2,7 @@ package main
 
 import (
 	"flag"
-	"porter/cmd/uploader/quanmin"
+	"porter/cmd/node/quanmin"
 	"porter/wlog"
 
 	"gorm.io/gorm"
@@ -20,15 +20,12 @@ func main() {
 	if *Mode == "debug" {
 		wlog.DevelopMode()
 	}
-	// DB = db.NewPG()
 
-	// r := gin.Default()
-	// r.GET("/bind", Bind)
+	// 从消息队列中获取任务
 
 	wlog.Infof("开始解析用户[%s]视频列表 \n", *dyuid)
 	vlist := UserVideoList(*dyuid)
 	wlog.Infof("用户[%s]视频列表解析成功 \n", *dyuid)
-	// vlist := Mock()
 	q := quanmin.NewUser(*bduss)
 	for i, v := range vlist[:5] {
 		wlog.Infof("[%d][%s]开始下载 \n", i+1, v.Desc)
@@ -39,20 +36,4 @@ func main() {
 
 		wlog.Infof("[%s]上传完毕 \n", v.Desc)
 	}
-	// err := q.Login()
-	// if err != nil {
-	// 	wlog.Error("登录失败", err)
-	// 	return
-	// }
-
-	// wlog.Info("登录成功:", q.Name())
-	// file := make([]byte, 0)
-	// err := q.Upload(file)
-	// if err != nil {
-	// 	wlog.Error("文件上传失败:", err)
-	// 	return
-	// }
-
-	// r.Run(*Host)
-
 }

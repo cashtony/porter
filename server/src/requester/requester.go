@@ -13,12 +13,13 @@ const (
 	// DesktopUserAgent 电脑端浏览器标识
 	DesktopUserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.132 Safari/537.36"
 	// MobileUserAgent 移动端浏览器标识
-	MobileUserAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 11_0 like Mac OS X) AppleWebKit/604.1.38 (KHTML, like Gecko) Version/11.0 Mobile/15A372 Safari/604.1"
+	// MobileUserAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 11_0 like Mac OS X) AppleWebKit/604.1.38 (KHTML, like Gecko) Version/11.0 Mobile/15A372 Safari/604.1"
+	MobileUserAgent = "Mozilla/5.0 (Linux; Android 5.0; SM-G900P Build/LRX21T) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.66 Mobile Safari/537.36"
 )
 
 var (
 	// UserAgent 浏览器标识
-	UserAgent = DesktopUserAgent
+	UserAgent = MobileUserAgent
 	// DefaultClient 默认 http 客户端
 	DefaultClient = NewHTTPClient()
 )
