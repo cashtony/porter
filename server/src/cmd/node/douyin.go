@@ -1,13 +1,13 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"porter/requester"
 	"porter/wlog"
-	"strings"
 	"time"
 
 	"github.com/bitly/go-simplejson"
@@ -26,32 +26,6 @@ func DouyinVideoList(userid string) []string {
 	result := make([]string, 0)
 
 	return result
-}
-
-func Mock() []*DYVideo {
-	videoList := make([]*DYVideo, 0)
-	j, err := simplejson.NewFromReader(strings.NewReader(mock))
-	if err != nil {
-		wlog.Error("数据解析失败:", err)
-		return videoList
-	}
-
-	for _, item := range j.Get("aweme_list").MustArray() {
-		itemJSON := item.(map[string]interface{})
-		downloadURL := itemJSON["video"].(map[string]interface{})["play_addr"].(map[string]interface{})["url_list"].([]interface{})[0].(string)
-		authorInfo := itemJSON["author"].(map[string]interface{})
-		video := &DYVideo{
-			AuthorUID:   authorInfo["uid"].(string),
-			AuthorName:  authorInfo["nickname"].(string),
-			Awemeid:     itemJSON["aweme_id"].(string),
-			Desc:        itemJSON["desc"].(string),
-			DownloadURL: downloadURL,
-		}
-
-		videoList = append(videoList, video)
-	}
-
-	return videoList
 }
 
 func UserVideoList(uid string) []*DYVideo {
@@ -98,55 +72,44 @@ func UserVideoList(uid string) []*DYVideo {
 	return videoList
 }
 
-func download(video *DYVideo) {
+func download(dirName, fileName, downloadURL string) (string, error) {
 	client := requester.NewHTTPClient()
 	client.SetUserAgent(requester.MobileUserAgent)
 
-	resp, err := client.Req("GET", video.DownloadURL, nil, nil)
+	resp, err := client.Req("GET", downloadURL, nil, nil)
 	if err != nil {
-		wlog.Error("下载的请求发生错误", err)
-		return
+		return "", fmt.Errorf("下载的请求发生错误:%s", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusForbidden {
-		wlog.Warn("访问被拒绝了")
-		return
+		return "", errors.New("访问被拒绝了")
 	}
 
-	dataResp := resp
-	if resp.StatusCode == http.StatusFound {
-		location := resp.Header.Get("location")
-		jumpURLResp, err := client.Req("GET", location, nil, nil)
-		if err != nil {
-			wlog.Error("下载的请求发生错误", err)
-			return
-		}
-		defer jumpURLResp.Body.Close()
-
-		dataResp = jumpURLResp
-	}
-
-	contentType := dataResp.Header.Get("Content-Type")
+	contentType := resp.Header.Get("Content-Type")
 	if contentType != "video/mp4" {
-		wlog.Warn("获取的类型不正确")
-		return
+		return "", fmt.Errorf("获取的类型不正确:%s", contentType)
 	}
 	//创建文件夹
 	cmd, _ := os.Getwd()
-	dirPath := fmt.Sprintf("temp/%s", video.AuthorName)
+	dirPath := fmt.Sprintf("temp/%s", dirName)
 	os.MkdirAll(dirPath, os.ModePerm)
-	video.LocalFilePath = fmt.Sprintf("%s/%s/%s.mp4", cmd, dirPath, video.Desc)
-	f, err := os.Create(video.LocalFilePath)
+	filePath := fmt.Sprintf("%s/%s/%s.mp4", cmd, dirPath, fileName)
+	f, err := os.Create(filePath)
 	if err != nil {
-		wlog.Error("下载时申请空间失败:", err)
-		return
+		return "", fmt.Errorf("下载时申请空间失败:%s", err)
 	}
 	defer f.Close()
 
-	_, err = io.Copy(f, dataResp.Body)
+	_, err = io.Copy(f, resp.Body)
 	if err != nil {
-		wlog.Error("下载时出现错误:", err)
-		return
+		return "", fmt.Errorf("交换空间时发生错误:%s", err)
 	}
+
+	return filePath, nil
+}
+
+func deleteUserDir(nickname string) {
+	dirPath := fmt.Sprintf("temp/%s", nickname)
+	os.RemoveAll(dirPath)
 }

@@ -11,3 +11,13 @@ const (
 	// 访问用户的shareURL时会进行跳转,跳转的链接中带有sec_uid
 	GetUserInfo = "https://www.iesdouyin.com/web/api/v2/user/info/"
 )
+
+// 百度接口, cookie中带有bduss即可
+const (
+	GetBaiduUserInfo = "https://quanmin.baidu.com/wise/video/pcpub/userinfo?isAjax=1"
+)
+
+var (
+	TaskPushTopic     = "TaskPush"
+	TaskFinishedTopic = "TaskFinished"
+)
