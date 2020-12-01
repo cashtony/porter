@@ -14,7 +14,12 @@ const (
 
 // 百度接口, cookie中带有bduss即可
 const (
-	GetBaiduUserInfo = "https://quanmin.baidu.com/wise/video/pcpub/userinfo?isAjax=1"
+	GetBaiduBaseInfo = "https://pan.baidu.com/api/loginStatus?clienttype=5"
+	GetQuanminInfo   = "https://quanmin.baidu.com/wise/video/pcpub/userinfo"
+	// POST https://quanmin.baidu.com/mvideo/api?api_name=userprofilesubmit  api_name=userprofile
+	// form  userprofilesubmit    nickname=超级码力366&user_type=ugc // 修改名称
+	// form：userprofile method=get&user_type=ugc 获取用户是否能改名之类的信息
+	QuanminAPI = "https://quanmin.baidu.com/mvideo/api"
 )
 
 var (

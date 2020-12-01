@@ -24,12 +24,12 @@ func ScheduleUpdate() {
 	wlog.Info("本次更新的用户数量为:", len(users))
 	for _, user := range users {
 		traffic <- 1
-		go doUpdate(user)
+		go updateOneUser(user)
 	}
 
 }
 
-func doUpdate(user *DouyinUser) {
+func updateOneUser(user *DouyinUser) {
 	defer func() {
 		<-traffic
 

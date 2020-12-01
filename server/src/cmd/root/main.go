@@ -2,10 +2,12 @@ package main
 
 import (
 	"flag"
+	"math/rand"
 	"porter/db"
 	"porter/define"
 	"porter/queue"
 	"porter/wlog"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/nsqio/go-nsq"
@@ -17,9 +19,8 @@ var Mode = flag.String("mode", "debug", "运行模式 debug:开发模式, releas
 var DB *gorm.DB
 var Q *nsq.Producer
 
-// center负责采集,分类,分发任务
 func main() {
-
+	rand.Seed(time.Now().Unix())
 	flag.Parse()
 
 	if *Mode == "debug" {
@@ -44,13 +45,13 @@ func main() {
 	// if err != nil {
 	// 	wlog.Error("新建抖音用户失败:", err)
 	// }
-	// StoreDouYinUser(user)
+	// user.Store()1460800875 380917571
 
 	// user := &BaiduUser{
 	// 	UID: "1",
 	// }
 
-	ScheduleUpdate()
+	// ScheduleUpdate()
 
 	g := gin.Default()
 	g.Run()

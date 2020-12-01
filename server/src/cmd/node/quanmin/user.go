@@ -159,7 +159,7 @@ func (b *baiduAccount) Upload(filePath, desc string) error {
 		chromedp.Click(`div > button.ant-btn.ant-btn-primary`, chromedp.ByQuery),
 		chromedp.SendKeys(`span.ant-form-item-children > textarea`, desc, chromedp.ByQuery),
 		chromedp.Click(`button[class^="ant-btn btn-publish"]`, chromedp.ByQuery),
-		chromedp.Sleep(5*time.Second),
+		chromedp.Sleep(2*time.Second),
 	)
 	if err != nil {
 		return fmt.Errorf("自动上传失败:%s", err)
@@ -245,6 +245,10 @@ func (b *baiduAccount) streamUpload(data []byte) error {
 
 func (b *baiduAccount) Name() string {
 	return b.name
+}
+
+func (b *baiduAccount) UID() uint64 {
+	return b.uid
 }
 
 func NewUser(bduss string) *baiduAccount {

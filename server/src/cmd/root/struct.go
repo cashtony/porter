@@ -15,13 +15,6 @@ type DouyinUser struct {
 	bduss     string
 }
 
-type BaiduUser struct {
-	UID       string `gorm:"primaryKey"`
-	Nickname  string
-	Bduss     string `gorm:"primaryKey"`
-	DouyinUID string // 绑定的抖音uid
-}
-
 type DouyinVideo struct {
 	AwemeID    string `gorm:"primaryKey"`
 	AuthorUID  string // 抖音uid

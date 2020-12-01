@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/bitly/go-simplejson"
+	"gorm.io/gorm/clause"
 )
 
 // NewDouYinUser 传入一个分享的url,类似https://v.douyin.com/qKDMXG/
@@ -27,7 +28,6 @@ func NewDouYinUser(shareURL string) (*DouyinUser, error) {
 	// 获取所有视频信息
 	user.initVideoList()
 
-	wlog.Infof("user %+v", user)
 	return user, nil
 }
 
@@ -155,6 +155,20 @@ func (u *DouyinUser) OnePageVideo(cursor int64) ([]*DouyinVideo, bool, int64, er
 	return videoList, hasMore, nextCursor, nil
 }
 
+func (d *DouyinUser) Store() {
+	DB.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "uid"}},
+		UpdateAll: true,
+	}).Create(d)
+	if DB.Error != nil {
+		wlog.Errorf("抖音用户[%s][%s]存入数据库失败:%s \n", d.UID, d.Nickname, DB.Error)
+		return
+	}
+}
+func (d *DouyinUser) StoreVideo() {
+	DB.Create(d.videoList)
+}
+
 func getVideoCreateTime(awemeid string) (*DouyinVideoExtraInfo, error) {
 	info := &DouyinVideoExtraInfo{}
 	url := fmt.Sprintf("%s?item_ids=%s", define.GetVideoURI, awemeid)
@@ -202,26 +216,4 @@ func getVideoCreateTime(awemeid string) (*DouyinVideoExtraInfo, error) {
 
 	return info, nil
 
-}
-func (v *DouyinVideo) getVideoInfo() {
-
-}
-func (v *DouyinVideo) getVideoCreateTime() {
-
-}
-
-// 查看是否有新的视频数据,只需查看第一页即可
-func UpdateDouYinUser(uid string) {
-
-}
-
-func StoreDouYinUser(user *DouyinUser) {
-	// 储存到数据库
-	DB.Create(user)
-	DB.Create(user.videoList)
-}
-
-func NewBaiduUser(bduss string) (user *BaiduUser) {
-	// 获取个人信息
-	return
 }
