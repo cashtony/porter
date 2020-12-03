@@ -17,7 +17,7 @@ func InitComsumer(topic string, f nsq.Handler) *nsq.Consumer {
 		wlog.Fatal("Comsumer消息队列初始化失败", err)
 	}
 	consumer.AddHandler(f)
-
+	consumer.SetLoggerLevel(nsq.LogLevelWarning)
 	// Use nsqlookupd to discover nsqd instances.
 	// See also ConnectToNSQD, ConnectToNSQDs, ConnectToNSQLookupds.
 	err = consumer.ConnectToNSQLookupd(*NSQLookupd)

@@ -14,6 +14,21 @@ import (
 	"gorm.io/gorm/clause"
 )
 
+type DouyinUser struct {
+	UID             string          `json:"uid" gorm:"primaryKey"`
+	UniqueUID       string          `json:"uniqueUID" gorm:"primaryKey"` // 抖音号
+	Nickname        string          `json:"nickName"`
+	ShareURL        string          `json:"shareURL" gorm:"primaryKey"`
+	VideoCount      int             `json:"videoCount"`
+	FansCount       int             `json:"fansNum"`
+	BaiduUID        string          `json:"baiduUID"`        // 绑定的百度uid
+	LastCollectTime define.JsonTime `json:"lastCollectTime"` // 最后一次采集时间
+	CreateTime      define.JsonTime `json:"createTime" gorm:"default:now()"`
+
+	secUID string // 用于填充获取用户数据接口
+	bduss  string
+}
+
 // NewDouYinUser 传入一个分享的url,类似https://v.douyin.com/qKDMXG/
 func NewDouYinUser(shareURL string) (*DouyinUser, error) {
 	// 获取个人信息
@@ -24,9 +39,6 @@ func NewDouYinUser(shareURL string) (*DouyinUser, error) {
 	if err != nil {
 		return user, err
 	}
-
-	// 获取所有视频信息
-	user.initVideoList()
 
 	return user, nil
 }
@@ -53,15 +65,16 @@ func (u *DouyinUser) initUserInfo() error {
 	}
 
 	jUser := j.Get("user_info")
-	u.Nickname = jUser.Get("nickname").MustString()
-	u.UniqueUID = jUser.Get("unique_id").MustString()
-	u.UID = jUser.Get("uid").MustString()
-
+	u.Nickname, _ = jUser.Get("nickname").String()
+	u.UniqueUID, _ = jUser.Get("unique_id").String()
+	u.UID, _ = jUser.Get("uid").String()
+	u.VideoCount, _ = jUser.Get("aweme_count").Int()
+	u.FansCount, _ = jUser.Get("follower_count").Int()
 	return nil
 }
 
 func (u *DouyinUser) initVideoList() {
-	u.videoList = make([]*DouyinVideo, 0)
+
 	var (
 		onePageList []*DouyinVideo
 		nextCursor  int64 = 0
@@ -78,9 +91,11 @@ func (u *DouyinUser) initVideoList() {
 			return
 		}
 
-		u.videoList = append(u.videoList, onePageList...)
+		u.StoreVideo(onePageList)
 		page++
 	}
+
+	wlog.Debugf("用户[%s]视频解析完毕 \n", u.Nickname)
 }
 
 // OnePageVideo 接收一个游标,返回是否有下一页以及相关游标
@@ -165,8 +180,15 @@ func (d *DouyinUser) Store() {
 		return
 	}
 }
-func (d *DouyinUser) StoreVideo() {
-	DB.Create(d.videoList)
+func (d *DouyinUser) StoreVideo(list []*DouyinVideo) {
+	DB.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "aweme_id"}},
+		DoNothing: true,
+	}).Create(list)
+	if DB.Error != nil {
+		wlog.Errorf("抖音用户[%s][%s]存入数据库失败:%s \n", d.UID, d.Nickname, DB.Error)
+		return
+	}
 }
 
 func getVideoCreateTime(awemeid string) (*DouyinVideoExtraInfo, error) {

@@ -2,19 +2,6 @@ package main
 
 import "time"
 
-type DouyinUser struct {
-	UID             string `gorm:"primaryKey"`
-	UniqueUID       string `gorm:"primaryKey"` // 抖音号
-	Nickname        string
-	ShareURL        string    `gorm:"primaryKey"`
-	BaiduUID        string    // 绑定的百度uid
-	LastCollectTime time.Time // 最后一次采集时间
-
-	secUID    string         // 用于填充获取用户数据接口
-	videoList []*DouyinVideo // 此用户的视频信息
-	bduss     string
-}
-
 type DouyinVideo struct {
 	AwemeID    string `gorm:"primaryKey"`
 	AuthorUID  string // 抖音uid
@@ -26,4 +13,20 @@ type DouyinVideo struct {
 type DouyinVideoExtraInfo struct {
 	CreateTime time.Time
 	VID        string
+}
+
+type Account struct {
+	UID        int    `json:"uid" gorm:"PRIMARY_KEY;AUTO_INCREMENT"`
+	Name       string `json:"name"`
+	Password   string `json:"-"`
+	Token      string `json:"-"`
+	Rule       int    `json:"role"` // 1:管理员 50:文员
+	CreateTime time.Time
+}
+
+type FaildRecords struct {
+	ID         int `gorm:"PRIMARY_KEY;AUTO_INCREMENT"`
+	Bduss      string
+	Douyin     string
+	CreateTime time.Time `gorm:"default:now()"`
 }

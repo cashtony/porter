@@ -13,14 +13,15 @@ import (
 )
 
 type BaiduUser struct {
-	UID        string `gorm:"primaryKey"`
-	Username   string // 账户名称
-	Nickname   string // 昵称
-	Bduss      string `gorm:"primaryKey"`
-	FansNum    int
-	Diamond    int
-	videoCount int
-	DouyinUID  string // 绑定的抖音uid
+	UID        string          `gorm:"primaryKey" json:"uid"`
+	Username   string          `json:"userName"` // 账户名称
+	Nickname   string          `json:"nickName"`
+	Bduss      string          `gorm:"primaryKey" json:"dbuss"`
+	FansNum    int             `json:"fansNum"`
+	Diamond    int             `json:"diamond"`
+	VideoCount int             `json:"videoCount"`
+	DouyinUID  string          `json:"douyinUID"` // 绑定的抖音uid
+	CreateTime define.JsonTime `gorm:"default:now()" json:"createTime"`
 }
 
 func NewBaiduUser(bduss string) (*BaiduUser, error) {
@@ -124,7 +125,7 @@ func (b *BaiduUser) fetchUsernInfo() error {
 	b.Nickname = nickname
 	b.FansNum = fansnum
 	b.Diamond = diamond
-	b.videoCount = videoCount
+	b.VideoCount = videoCount
 
 	return nil
 }
