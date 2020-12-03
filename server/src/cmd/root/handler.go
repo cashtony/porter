@@ -14,15 +14,19 @@ func BindAdd(c *gin.Context) {
 		Content string `json:"content"`
 	}{}
 	err := c.BindJSON(param)
-	if err != nil || param.Content == "" {
+	if err != nil {
 		c.JSON(http.StatusOK, gin.H{"code": define.ParamErr})
 		return
 	}
+
 	// 冒号和换行作为分割符
 	// 单条格式为 抖音分享号:百度bduss
-
 	//首先清理无用的空格之类符号
 	cleanContent := strings.Replace(param.Content, " ", "", -1)
+	if len(cleanContent) == 0 {
+		c.JSON(http.StatusOK, gin.H{"code": define.ParamErr})
+		return
+	}
 
 	failRecords := make([]string, 0)
 	// 解析成单行
@@ -64,6 +68,7 @@ func BindAdd(c *gin.Context) {
 
 		go func() {
 			dy.initVideoList()
+			publishTask(dy)
 		}()
 
 		sucNum++
@@ -134,5 +139,28 @@ func BaiduUserList(c *gin.Context) {
 		"code":     define.Success,
 		"users":    users,
 		"totalNum": totalNum,
+	})
+}
+
+func ImmediatelyUpdate(c *gin.Context) {
+	UpdateAndUpload()
+}
+
+func ReloadUserVideoList(c *gin.Context) {
+	param := &struct {
+		ShareURL string `json:"shareURL"`
+	}{}
+
+	err := c.BindJSON(param)
+	if err != nil {
+		wlog.Error("参数解析错误", err)
+		return
+	}
+
+	dy, _ := NewDouYinUser(param.ShareURL)
+	go dy.initVideoList()
+
+	c.JSON(http.StatusOK, gin.H{
+		"code": define.Success,
 	})
 }

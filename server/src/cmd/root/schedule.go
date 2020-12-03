@@ -14,7 +14,7 @@ import (
 var traffic = make(chan int, define.ParallelNum)
 
 // 每天固定时间更新账号
-func ScheduleUpdate() {
+func UpdateAndUpload() {
 	users := make([]*DouyinUser, 0)
 	DB.Where("last_collect_time < current_date").Find(&users)
 	if DB.Error != nil {
@@ -62,14 +62,6 @@ func updateOneUser(user *DouyinUser) {
 		return
 	}
 
-	bduss := ""
-	DB.Model(&BaiduUser{}).Select("bduss").Where("uid = ?", user.BaiduUID).First(&bduss)
-	if DB.Error != nil {
-		wlog.Errorf("从数据库中获取用[%s][%s]绑定的bduss字段失败: %s \n", user.UID, user.Nickname, DB.Error)
-		return
-	}
-	user.bduss = bduss
-
 	publishTask(user)
 }
 
@@ -77,17 +69,27 @@ func publishTask(user *DouyinUser) {
 	// 上传视频(从未上传的视频中挑选8-12条)
 	randomNum := rand.Intn(MaxUploadNum-MinUploadNum) + MinUploadNum
 	uploadVideoList := make([]*DouyinVideo, 0)
-	DB.Model(&DouyinVideo{
+	videoModel := DB.Model(&DouyinVideo{}).Where(&DouyinVideo{
 		AuthorUID: user.UID,
 		State:     0,
-	}).Order("create_time desc").Limit(randomNum).Find(&uploadVideoList)
+	}).Order("create_time desc").Limit(randomNum)
+
+	videoModel.Debug().Where("date(create_time) = current_date - 1").Find(&uploadVideoList)
 	if DB.Error != nil {
 		wlog.Errorf("从数据库中获取用户[%s][%s]视频列表信息失败:%s \n", user.UID, user.Nickname, DB.Error)
 		return
 	}
+	if len(uploadVideoList) == 0 {
+		wlog.Infof("用户[%s][%s]昨天没有更新,将获取以前的视频 \n", user.UID, user.Nickname)
+		videoModel.Debug().Find(&uploadVideoList)
+		if DB.Error != nil {
+			wlog.Errorf("从数据库中获取用户[%s][%s]视频列表信息失败:%s \n", user.UID, user.Nickname, DB.Error)
+			return
+		}
+	}
 
 	if len(uploadVideoList) == 0 {
-		wlog.Infof("用户[%s][%s]没有视频可更新 \n", user.UID, user.Nickname)
+		wlog.Infof("用户[%s][%s]没有可更新内容,退出 \n", user.UID, user.Nickname)
 		return
 	}
 
@@ -106,10 +108,17 @@ func publishTask(user *DouyinUser) {
 		})
 	}
 
+	bduss := ""
+	DB.Model(&BaiduUser{}).Select("bduss").Where("uid = ?", user.BaiduUID).First(&bduss)
+	if DB.Error != nil {
+		wlog.Errorf("从数据库中获取用[%s][%s]绑定的bduss字段失败: %s \n", user.UID, user.Nickname, DB.Error)
+		return
+	}
+
 	// 封装成task投递到任务队列中
 	wlog.Debugf("开始投放用户[%s][%s]任务: \n", user.UID, user.Nickname)
 	t := &define.Task{
-		Bduss:    user.bduss,
+		Bduss:    bduss,
 		Videos:   taskVideoList,
 		Nickname: user.Nickname,
 	}

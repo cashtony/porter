@@ -37,6 +37,10 @@ func (q *queueMsgHandler) HandleMessage(m *nsq.Message) error {
 
 func excuteTask(task *define.Task) {
 	wlog.Infof("接收到任务:%+v \n", task)
+	if task.Bduss == "" {
+		wlog.Errorf("[%s] bduss为空 任务错误: \n", task.Nickname)
+		return
+	}
 
 	quanmin := quanmin.NewUser(task.Bduss)
 	finishedList := make([]string, 0)

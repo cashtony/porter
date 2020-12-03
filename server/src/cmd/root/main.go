@@ -42,7 +42,7 @@ func main() {
 
 	// 定时器初始化, 每天早上8点开始进行用户视频的检测
 	c := cron.New()
-	c.AddFunc("0 8 * * *", ScheduleUpdate)
+	c.AddFunc("0 8 * * *", UpdateAndUpload)
 
 	// gin初始化
 	g := gin.Default()
@@ -53,8 +53,11 @@ func main() {
 	g.GET("/account/info", AccountInfo)
 
 	g.POST("/douyin/user/list", DouyinUserList)
+	g.POST("/douyin/user/reloadVideoList", ReloadUserVideoList)
 	g.POST("/baidu/user/list", BaiduUserList)
 	g.POST("/bind/add", BindAdd)
+
+	g.GET("/immediatelyUpdate", ImmediatelyUpdate)
 
 	g.Run(*Host)
 

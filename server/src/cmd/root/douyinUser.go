@@ -26,7 +26,6 @@ type DouyinUser struct {
 	CreateTime      define.JsonTime `json:"createTime" gorm:"default:now()"`
 
 	secUID string // 用于填充获取用户数据接口
-	bduss  string
 }
 
 // NewDouYinUser 传入一个分享的url,类似https://v.douyin.com/qKDMXG/
@@ -92,6 +91,7 @@ func (u *DouyinUser) initVideoList() {
 		}
 
 		u.StoreVideo(onePageList)
+		wlog.Debugf("[%s]第[%d]页视频解析完毕 hasmore:%b nextCursor:%d videoLen:%d \n", u.Nickname, page, hasMore, nextCursor, len(onePageList))
 		page++
 	}
 
@@ -114,7 +114,7 @@ func (u *DouyinUser) OnePageVideo(cursor int64) ([]*DouyinVideo, bool, int64, er
 			tryTimes = 0
 		}
 
-		url := fmt.Sprintf("%s?user_id=%s&sec_uid=%s&count=35&max_cursor=%d&aid=1128&_signature=&dytk=", define.GetVideoList, u.UID, u.secUID, cursor)
+		url := fmt.Sprintf("%s?user_id=%s&sec_uid=%s&count=20&max_cursor=%d&aid=1128&_signature=&dytk=", define.GetVideoList, u.UID, u.secUID, cursor)
 		resp, err := requester.DefaultClient.Req("GET", url, nil, nil)
 		if err != nil {
 			tryTimes++
@@ -144,11 +144,8 @@ func (u *DouyinUser) OnePageVideo(cursor int64) ([]*DouyinVideo, bool, int64, er
 			}
 
 			//获取视频上传时间
-			videoExtraInfo, err := getVideoCreateTime(video.AwemeID)
-			if err != nil {
-				wlog.Error("视频的创建时间获取错误", err)
-				continue
-			}
+			videoExtraInfo, _ := getVideoCreateTime(video.AwemeID)
+
 			video.CreateTime = videoExtraInfo.CreateTime
 			videoList = append(videoList, video)
 		}
@@ -162,6 +159,10 @@ func (u *DouyinUser) OnePageVideo(cursor int64) ([]*DouyinVideo, bool, int64, er
 			if err != nil {
 				wlog.Error("获取max_cursor字段错误", err)
 			}
+		}
+
+		if hasMore && nextCursor == 0 {
+			hasMore = false
 		}
 
 		break

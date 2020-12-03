@@ -8,6 +8,7 @@ import (
 	"os"
 	"porter/requester"
 	"porter/wlog"
+	"strings"
 	"time"
 
 	"github.com/bitly/go-simplejson"
@@ -94,6 +95,8 @@ func download(dirName, fileName, downloadURL string) (string, error) {
 	cmd, _ := os.Getwd()
 	dirPath := fmt.Sprintf("temp/%s", dirName)
 	os.MkdirAll(dirPath, os.ModePerm)
+	// 去掉特殊字符,否则windows下会报错The filename, directory name, or volume label syntax is incorrect.
+	fileName = strings.ReplaceAll(fileName, "?", "")
 	filePath := fmt.Sprintf("%s/%s/%s.mp4", cmd, dirPath, fileName)
 	f, err := os.Create(filePath)
 	if err != nil {
