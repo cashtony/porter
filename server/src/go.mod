@@ -13,6 +13,7 @@ require (
 	github.com/lestrrat-go/strftime v1.0.3 // indirect
 	github.com/nsqio/go-nsq v1.0.8
 	github.com/robfig/cron/v3 v3.0.1
+	github.com/tealeg/xlsx v1.0.5
 	go.uber.org/zap v1.16.0
 	gorm.io/driver/postgres v1.0.5
 	gorm.io/gorm v1.20.7
