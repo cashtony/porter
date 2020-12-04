@@ -124,7 +124,7 @@ func (b *baiduAccount) Upload(filePath, desc string) error {
 	)
 	defer optCancel()
 
-	ctx, cancel := context.WithTimeout(optsctx, 600*time.Second)
+	ctx, cancel := context.WithTimeout(optsctx, 5*time.Minute)
 	defer cancel()
 
 	err := chromedp.Run(ctx,

@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"porter/define"
@@ -201,7 +200,7 @@ func getVideoCreateTime(awemeid string) (*DouyinVideoExtraInfo, error) {
 	var err error
 	for tryTimes > 0 {
 		// 设置间隔为了防止两次调用时间间隔过短导致握手失败
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(500 * time.Millisecond)
 		resp, err = requester.DefaultClient.Req("GET", url, nil, nil)
 		if err != nil {
 			tryTimes--
@@ -210,32 +209,34 @@ func getVideoCreateTime(awemeid string) (*DouyinVideoExtraInfo, error) {
 		break
 	}
 	if resp == nil {
-		return info, errors.New("请求视频信息失败: 超过重试次数")
+		return info, fmt.Errorf("[%s]请求视频信息失败: 超过重试次数", awemeid)
 	}
 	defer resp.Body.Close()
 
 	j, err := simplejson.NewFromReader(resp.Body)
 	if err != nil {
-		return info, fmt.Errorf("数据解析失败:%s", err)
+		return info, fmt.Errorf("[%s]数据解析失败:%s", awemeid, err)
 	}
 
 	list, err := j.Get("item_list").Array()
 	if err != nil {
-		return info, fmt.Errorf("解析item_list字段失败:%s", err)
+		return info, fmt.Errorf("[%s]解析item_list字段失败:%s", awemeid, err)
 	}
 
 	if len(list) == 0 {
-		return info, fmt.Errorf("获取item_list数据长度为0:%s", err)
+		// 为0说明已经失效,如果视频主删掉了视频就会导致此结果
+		DB.Model(&DouyinVideo{}).Where("aweme_id = ?", awemeid).Update("state", 2)
+		return info, fmt.Errorf("[%s]此视频可能已经被清理,将在数据库中进行标记", awemeid)
 	}
-	videoJsonInfo := list[0].(map[string]interface{})
-	t := videoJsonInfo["create_time"].(json.Number)
+	videoJSONInfo := list[0].(map[string]interface{})
+	t := videoJSONInfo["create_time"].(json.Number)
 	timeStamp, err := t.Int64()
 	if err != nil {
-		return info, fmt.Errorf("视频的createTime字段获取失败:%s", err)
+		return info, fmt.Errorf("[%s]视频的createTime字段获取失败:%s", awemeid, err)
 	}
 
 	info.CreateTime = time.Unix(timeStamp, 0)
-	info.VID = videoJsonInfo["video"].(map[string]interface{})["vid"].(string)
+	info.VID = videoJSONInfo["video"].(map[string]interface{})["vid"].(string)
 
 	return info, nil
 

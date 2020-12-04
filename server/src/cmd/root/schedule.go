@@ -108,6 +108,11 @@ func publishTask(user *DouyinUser) {
 		})
 	}
 
+	if len(uploadVideoList) == 0 {
+		wlog.Infof("用户[%s][%s]没有可更新内容,退出 \n", user.UID, user.Nickname)
+		return
+	}
+
 	bduss := ""
 	DB.Model(&BaiduUser{}).Select("bduss").Where("uid = ?", user.BaiduUID).First(&bduss)
 	if DB.Error != nil {
