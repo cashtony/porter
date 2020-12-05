@@ -13,6 +13,11 @@ import (
 
 var traffic = make(chan int, define.ParallelNum)
 
+const (
+	WaitUpload     = 0
+	FinishedUpload = 1
+)
+
 // 每天固定时间更新账号
 func UpdateAndUpload() {
 	users := make([]*DouyinUser, 0)
@@ -62,17 +67,16 @@ func updateOneUser(user *DouyinUser) {
 		return
 	}
 
-	publishTask(user)
+	if user.BaiduUID != "" {
+		publishTask(user)
+	}
 }
 
 func publishTask(user *DouyinUser) {
 	// 上传视频(从未上传的视频中挑选8-12条)
 	randomNum := rand.Intn(MaxUploadNum-MinUploadNum) + MinUploadNum
 	uploadVideoList := make([]*DouyinVideo, 0)
-	videoModel := DB.Model(&DouyinVideo{}).Where(&DouyinVideo{
-		AuthorUID: user.UID,
-		State:     0,
-	}).Order("create_time desc").Limit(randomNum)
+	videoModel := DB.Model(&DouyinVideo{}).Where("author_uid = ? and state = ?", user.UID, WaitUpload).Order("create_time desc").Limit(randomNum)
 
 	videoModel.Debug().Where("date(create_time) = current_date - 1").Find(&uploadVideoList)
 	if DB.Error != nil {
@@ -95,6 +99,8 @@ func publishTask(user *DouyinUser) {
 
 	// 查找视频下载url
 	taskVideoList := make([]*define.TaskVideo, 0)
+	statisticList := make([]*Statistic, 0)
+
 	for _, v := range uploadVideoList {
 		videoExtranInfo, err := getVideoCreateTime(v.AwemeID)
 		if err != nil {
@@ -105,6 +111,13 @@ func publishTask(user *DouyinUser) {
 			AwemeID:     v.AwemeID,
 			Desc:        v.Desc,
 			DownloadURL: fmt.Sprintf("%s/?video_id=%s&ratio=720p&line=0", define.GetVideoDownload, videoExtranInfo.VID),
+		})
+
+		statisticList = append(statisticList, &Statistic{
+			BaiduUID:  user.BaiduUID,
+			DouyinUID: user.UID,
+			AwemeID:   v.AwemeID,
+			State:     WaitUpload,
 		})
 	}
 
@@ -133,6 +146,9 @@ func publishTask(user *DouyinUser) {
 		wlog.Error("task解析成json错误", err)
 		return
 	}
+
+	// 增加数据统计
+	DB.Create(&statisticList)
 
 	err = Q.Publish(define.TaskPushTopic, data)
 	if err != nil {
