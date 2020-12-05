@@ -27,7 +27,9 @@ func (q *queueMsgHandler) HandleMessage(m *nsq.Message) error {
 		return nil
 	}
 
-	DB.Model(&DouyinVideo{}).Where("aweme_id = ?", finishedVideoID.AwemeID).Update("state", 1)
-	// Returning a non-nil error will automatically send a REQ command to NSQ to re-queue the message.
+	DB.Model(&DouyinVideo{}).Where("aweme_id = ?", finishedVideoID.AwemeID).Update("state", FinishedUpload)
+	// 加入统计
+	DB.Model(&Statistic{}).Where("aweme_id = ?", finishedVideoID.AwemeID).Update("state", FinishedUpload)
+
 	return nil
 }

@@ -20,7 +20,6 @@ type DouyinUser struct {
 	ShareURL        string          `json:"shareURL" gorm:"primaryKey"`
 	VideoCount      int             `json:"videoCount"`
 	FansCount       int             `json:"fansNum"`
-	BaiduUID        string          `json:"baiduUID"`        // 绑定的百度uid
 	LastCollectTime define.JsonTime `json:"lastCollectTime"` // 最后一次采集时间
 	CreateTime      define.JsonTime `json:"createTime" gorm:"default:now()"`
 
@@ -187,6 +186,31 @@ func (d *DouyinUser) StoreVideo(list []*DouyinVideo) {
 	}).Create(list)
 	if DB.Error != nil {
 		wlog.Errorf("抖音用户[%s][%s]存入数据库失败:%s \n", d.UID, d.Nickname, DB.Error)
+		return
+	}
+}
+
+func (d *DouyinUser) Update() {
+	onePageList, _, _, err := d.OnePageVideo(0)
+	if err != nil {
+		wlog.Errorf("用户[%s][%s]获取视频列表失败:%s \n", d.UID, d.Nickname, err)
+		return
+	}
+
+	// 将没有的视频传入到数据库中
+	DB.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "aweme_id"}},
+		DoNothing: true,
+	}).Create(onePageList)
+	if DB.Error != nil {
+		wlog.Errorf("用户[%s][%s]新视频信息存入数据库失败:%s \n", d.UID, d.Nickname, DB.Error)
+		return
+	}
+
+	//更新用户的last_collect_time字段
+	DB.Model(d).Update("last_collect_time", time.Now())
+	if DB.Error != nil {
+		wlog.Errorf("从数据库中更新用户[%s][%s]last_collect_time字段失败: %s \n", d.UID, d.Nickname, DB.Error)
 		return
 	}
 }

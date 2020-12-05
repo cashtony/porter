@@ -1,17 +1,12 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
-	"math/rand"
 	"porter/define"
 	"porter/wlog"
-	"time"
-
-	"gorm.io/gorm/clause"
+	"sync"
 )
 
-var traffic = make(chan int, define.ParallelNum)
+var isUpdading = false
 
 const (
 	WaitUpload     = 0
@@ -20,138 +15,91 @@ const (
 
 // 每天固定时间更新账号
 func UpdateAndUpload() {
+	if isUpdading {
+		wlog.Warn("当前正在运行中,不能重复操作")
+		return
+	}
+
+	isUpdading = true
+
+	// 更新抖音用户视频数据
+	UpdateDouyinUsers()
+	// 更新百度用户数据(主要是钻石)
+	UpdateBaiduUsers()
+	// 更新百度视频数据
+	BaiduUsersUpload()
+
+	isUpdading = false
+	wlog.Info("更新完毕")
+
+}
+
+func UpdateDouyinUsers() {
+	defer func() {
+		if r := recover(); r != nil {
+			wlog.Error("任务panic", r)
+		}
+	}()
+	traffic := make(chan int, define.ParallelNum)
+	wg := sync.WaitGroup{}
+
 	users := make([]*DouyinUser, 0)
-	DB.Where("last_collect_time < current_date").Find(&users)
-	if DB.Error != nil {
-		wlog.Error("定时任务获取数据库数据时发生错误:", DB.Error)
+	result := DB.Where("last_collect_time < current_date").Find(&users)
+	if result.Error != nil {
+		wlog.Error("定时任务获取数据库数据时发生错误:", result.Error)
 		return
 	}
 	wlog.Info("本次更新的用户数量为:", len(users))
+	wg.Add(len(users))
+
 	for _, user := range users {
 		traffic <- 1
-		go updateOneUser(user)
+		go func(u *DouyinUser) {
+			// 获取最新一页视频
+			wlog.Debugf("开始更新用户[%s][%s]数据: \n", u.UID, u.Nickname)
+			u.Update()
+
+			wg.Done()
+			<-traffic
+		}(user)
+
 	}
+
+	wg.Wait()
+}
+
+func UpdateBaiduUsers() {
 
 }
 
-func updateOneUser(user *DouyinUser) {
+func BaiduUsersUpload() {
 	defer func() {
-		<-traffic
-
 		if r := recover(); r != nil {
-			wlog.Error("任务panic", user.UID, r)
+			wlog.Error("任务panic", r)
 		}
 	}()
-	// 获取最新一页视频
-	wlog.Debugf("开始更新用户[%s][%s]数据: \n", user.UID, user.Nickname)
-	onePageList, _, _, err := user.OnePageVideo(0)
-	if err != nil {
-		wlog.Errorf("用户[%s][%s]获取视频列表失败:%s \n", user.UID, user.Nickname, err)
+	wg := sync.WaitGroup{}
+	traffic := make(chan int, define.ParallelNum)
+	// 开始上传视频
+	bdUsers := make([]*BaiduUser, 0)
+	result := DB.Model(&BaiduUser{}).Where("last_upload_time < current_date and douyin_uid != ''").Find(bdUsers)
+	if result.Error != nil {
+		wlog.Error("定时任务获取百度用户时发生错误:", result.Error)
 		return
 	}
+	wlog.Info("开始上传: 本次要上传的用户数量为:", len(bdUsers))
+	wg.Add(len(bdUsers))
 
-	// 将没有的视频传入到数据库中
-	DB.Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "aweme_id"}},
-		DoNothing: true,
-	}).Create(onePageList)
-	if DB.Error != nil {
-		wlog.Errorf("用户[%s][%s]新视频信息存入数据库失败:%s \n", user.UID, user.Nickname, DB.Error)
-		return
+	for _, bduser := range bdUsers {
+		traffic <- 1
+
+		go func(u *BaiduUser) {
+			u.Upload()
+
+			wg.Done()
+			<-traffic
+		}(bduser)
 	}
 
-	//更新用户的last_collect_time字段
-	DB.Model(user).Update("last_collect_time", time.Now())
-	if DB.Error != nil {
-		wlog.Errorf("从数据库中更新用户[%s][%s]last_collect_time字段失败: %s \n", user.UID, user.Nickname, DB.Error)
-		return
-	}
-
-	if user.BaiduUID != "" {
-		publishTask(user)
-	}
-}
-
-func publishTask(user *DouyinUser) {
-	// 上传视频(从未上传的视频中挑选8-12条)
-	randomNum := rand.Intn(MaxUploadNum-MinUploadNum) + MinUploadNum
-	uploadVideoList := make([]*DouyinVideo, 0)
-	videoModel := DB.Model(&DouyinVideo{}).Where("author_uid = ? and state = ?", user.UID, WaitUpload).Order("create_time desc").Limit(randomNum)
-
-	videoModel.Debug().Where("date(create_time) = current_date - 1").Find(&uploadVideoList)
-	if DB.Error != nil {
-		wlog.Errorf("从数据库中获取用户[%s][%s]视频列表信息失败:%s \n", user.UID, user.Nickname, DB.Error)
-		return
-	}
-	if len(uploadVideoList) == 0 {
-		wlog.Infof("用户[%s][%s]昨天没有更新,将获取以前的视频 \n", user.UID, user.Nickname)
-		videoModel.Debug().Find(&uploadVideoList)
-		if DB.Error != nil {
-			wlog.Errorf("从数据库中获取用户[%s][%s]视频列表信息失败:%s \n", user.UID, user.Nickname, DB.Error)
-			return
-		}
-	}
-
-	if len(uploadVideoList) == 0 {
-		wlog.Infof("用户[%s][%s]没有可更新内容,退出 \n", user.UID, user.Nickname)
-		return
-	}
-
-	// 查找视频下载url
-	taskVideoList := make([]*define.TaskVideo, 0)
-	statisticList := make([]*Statistic, 0)
-
-	for _, v := range uploadVideoList {
-		videoExtranInfo, err := getVideoCreateTime(v.AwemeID)
-		if err != nil {
-			wlog.Error("获取视频额外数据发生错误:", err)
-			continue
-		}
-		taskVideoList = append(taskVideoList, &define.TaskVideo{
-			AwemeID:     v.AwemeID,
-			Desc:        v.Desc,
-			DownloadURL: fmt.Sprintf("%s/?video_id=%s&ratio=720p&line=0", define.GetVideoDownload, videoExtranInfo.VID),
-		})
-
-		statisticList = append(statisticList, &Statistic{
-			BaiduUID:  user.BaiduUID,
-			DouyinUID: user.UID,
-			AwemeID:   v.AwemeID,
-			State:     WaitUpload,
-		})
-	}
-
-	if len(uploadVideoList) == 0 {
-		wlog.Infof("用户[%s][%s]没有可更新内容,退出 \n", user.UID, user.Nickname)
-		return
-	}
-
-	bduss := ""
-	DB.Model(&BaiduUser{}).Select("bduss").Where("uid = ?", user.BaiduUID).First(&bduss)
-	if DB.Error != nil {
-		wlog.Errorf("从数据库中获取用[%s][%s]绑定的bduss字段失败: %s \n", user.UID, user.Nickname, DB.Error)
-		return
-	}
-
-	// 封装成task投递到任务队列中
-	wlog.Debugf("开始投放用户[%s][%s]任务: \n", user.UID, user.Nickname)
-	t := &define.Task{
-		Bduss:    bduss,
-		Videos:   taskVideoList,
-		Nickname: user.Nickname,
-	}
-
-	data, err := json.Marshal(t)
-	if err != nil {
-		wlog.Error("task解析成json错误", err)
-		return
-	}
-
-	// 增加数据统计
-	DB.Create(&statisticList)
-
-	err = Q.Publish(define.TaskPushTopic, data)
-	if err != nil {
-		wlog.Error("任务发布失败:", err)
-	}
+	wg.Wait()
 }

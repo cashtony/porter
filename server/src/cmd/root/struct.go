@@ -30,3 +30,12 @@ type FaildRecords struct {
 	Douyin     string
 	CreateTime time.Time `gorm:"default:now()"`
 }
+
+type Statistic struct {
+	ID         int       `gorm:"AUTO_INCREMENT"`
+	BaiduUID   string    // 传到哪个百度uid
+	DouyinUID  string    // 从哪个抖音号中搬运
+	AwemeID    string    // 视频id
+	UploadTime time.Time `gorm:"default:now()"` // 上传时间
+	State      int       // 上传状态 0:上传成功 1:上传中
+}

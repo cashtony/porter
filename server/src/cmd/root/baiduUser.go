@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"math/rand"
 	"net/http"
 	"porter/define"
 	"porter/requester"
@@ -13,15 +15,16 @@ import (
 )
 
 type BaiduUser struct {
-	UID        string          `gorm:"primaryKey" json:"uid"`
-	Username   string          `json:"userName"` // 账户名称
-	Nickname   string          `json:"nickName"`
-	Bduss      string          `gorm:"primaryKey" json:"dbuss"`
-	FansNum    int             `json:"fansNum"`
-	Diamond    int             `json:"diamond"`
-	VideoCount int             `json:"videoCount"`
-	DouyinUID  string          `json:"douyinUID"` // 绑定的抖音uid
-	CreateTime define.JsonTime `gorm:"default:now()" json:"createTime"`
+	UID            string          `gorm:"primaryKey" json:"uid"`
+	Username       string          `json:"userName"` // 账户名称
+	Nickname       string          `json:"nickName"`
+	Bduss          string          `gorm:"primaryKey" json:"dbuss"`
+	FansNum        int             `json:"fansNum"`
+	Diamond        int             `json:"diamond"`
+	VideoCount     int             `json:"videoCount"`
+	DouyinUID      string          `json:"douyinUID"` // 绑定的抖音uid
+	CreateTime     define.JsonTime `gorm:"default:now()" json:"createTime"`
+	LastUploadTime time.Time       `json:"lastUploadTime"`
 }
 
 func NewBaiduUser(bduss string) (*BaiduUser, error) {
@@ -128,6 +131,90 @@ func (b *BaiduUser) fetchUsernInfo() error {
 	b.VideoCount = videoCount
 
 	return nil
+}
+
+func (b *BaiduUser) Upload() {
+	// 上传视频(从未上传的视频中挑选8-12条)
+	randomNum := rand.Intn(MaxUploadNum-MinUploadNum) + MinUploadNum
+	uploadVideoList := make([]*DouyinVideo, 0)
+	videoModel := DB.Model(&DouyinVideo{}).Where("author_uid = ? and state = ?", b.DouyinUID, WaitUpload).Order("create_time desc").Limit(randomNum)
+
+	result := videoModel.Debug().Where("date(create_time) = current_date - 1").Find(&uploadVideoList)
+	if result.Error != nil {
+		wlog.Errorf("从数据库中获取用户[%s][%s]视频列表信息失败:%s \n", b.UID, b.Nickname, DB.Error)
+		return
+	}
+	if len(uploadVideoList) == 0 {
+		wlog.Infof("用户[%s][%s]昨天没有更新,将获取以前的视频 \n", b.UID, b.Nickname)
+		videoModel.Debug().Find(&uploadVideoList)
+		if DB.Error != nil {
+			wlog.Errorf("从数据库中获取用户[%s][%s]视频列表信息失败:%s \n", b.UID, b.Nickname, DB.Error)
+			return
+		}
+	}
+
+	if len(uploadVideoList) == 0 {
+		wlog.Infof("用户[%s][%s]没有可更新内容,退出 \n", b.UID, b.Nickname)
+		return
+	}
+
+	// 查找视频下载url
+	taskVideoList := make([]*define.TaskVideo, 0)
+	statisticList := make([]*Statistic, 0)
+
+	for _, v := range uploadVideoList {
+		videoExtranInfo, err := getVideoCreateTime(v.AwemeID)
+		if err != nil {
+			wlog.Error("获取视频额外数据发生错误:", err)
+			continue
+		}
+		taskVideoList = append(taskVideoList, &define.TaskVideo{
+			AwemeID:     v.AwemeID,
+			Desc:        v.Desc,
+			DownloadURL: fmt.Sprintf("%s/?video_id=%s&ratio=720p&line=0", define.GetVideoDownload, videoExtranInfo.VID),
+		})
+
+		statisticList = append(statisticList, &Statistic{
+			BaiduUID:  b.UID,
+			DouyinUID: b.DouyinUID,
+			AwemeID:   v.AwemeID,
+			State:     WaitUpload,
+		})
+	}
+
+	if len(uploadVideoList) == 0 {
+		wlog.Infof("用户[%s][%s]没有可更新内容,退出 \n", b.UID, b.Nickname)
+		return
+	}
+
+	// 封装成task投递到任务队列中
+	wlog.Debugf("开始投放用户[%s][%s]任务: \n", b.UID, b.Nickname)
+	t := &define.Task{
+		Bduss:    b.Bduss,
+		Videos:   taskVideoList,
+		Nickname: b.Nickname,
+	}
+
+	data, err := json.Marshal(t)
+	if err != nil {
+		wlog.Error("task解析成json错误", err)
+		return
+	}
+
+	// 增加数据统计
+	DB.Create(&statisticList)
+
+	err = Q.Publish(define.TaskPushTopic, data)
+	if err != nil {
+		wlog.Error("任务发布失败:", err)
+	}
+
+	//更新用户的最后上传字段
+	result = DB.Model(b).Update("last_upload_time", time.Now())
+	if result.Error != nil {
+		wlog.Errorf("从数据库中更新用户[%s][%s]last_upload_time字段失败: %s \n", b.UID, b.Nickname, DB.Error)
+		return
+	}
 }
 
 func (b *BaiduUser) Store() {

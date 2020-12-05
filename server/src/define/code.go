@@ -12,4 +12,5 @@ const (
 	ParamErr = iota + 2001
 	QueryErr
 	WrongContent // 绑定用户时的内容有错误
+	CannotBind
 )

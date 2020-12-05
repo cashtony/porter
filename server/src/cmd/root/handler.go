@@ -61,14 +61,13 @@ func BindAdd(c *gin.Context) {
 		}
 		wlog.Debugf("开始绑定%s %s \n", bd.Nickname, dy.Nickname)
 		bd.DouyinUID = dy.UID
-		dy.BaiduUID = bd.UID
 
 		bd.Store()
 		dy.Store()
 
 		go func() {
 			dy.initVideoList()
-			publishTask(dy)
+			bd.Upload()
 		}()
 
 		sucNum++
@@ -153,7 +152,7 @@ func ReloadUserVideoList(c *gin.Context) {
 
 	err := c.BindJSON(param)
 	if err != nil {
-		wlog.Error("参数解析错误", err)
+		c.JSON(http.StatusOK, gin.H{"code": define.ParamErr})
 		return
 	}
 
@@ -163,4 +162,42 @@ func ReloadUserVideoList(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"code": define.Success,
 	})
+}
+
+func ChangeBind(c *gin.Context) {
+	param := &struct {
+		BaiduUID      string `json:"baiduUID"`
+		BindDouyinUID string `json:"bindDouyinUID"`
+	}{}
+
+	err := c.BindJSON(param)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": define.ParamErr})
+		return
+	}
+
+	result := DB.Model(&BaiduUser{}).Where("uid = ?", param.BaiduUID).Update("douyin_uid", param.BindDouyinUID)
+	if result.Error != nil {
+		c.JSON(http.StatusOK, gin.H{"code": define.CannotBind})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code": define.Success,
+	})
+}
+
+func GetStatistic(c *gin.Context) {
+	param := &struct {
+		DouyinUID string `json:"douyinUID"`
+		StartTime int    `json:"startTime"`
+		EndTime   int    `json:"endTime"`
+	}{}
+
+	err := c.BindJSON(param)
+	if err != nil {
+		wlog.Error("参数解析错误", err)
+		return
+	}
+
 }

@@ -35,7 +35,7 @@ func main() {
 	DB.AutoMigrate(&BaiduUser{})
 	DB.AutoMigrate(&Account{})
 	DB.AutoMigrate(&FaildRecords{})
-
+	DB.AutoMigrate(&Statistic{})
 	// 队列初始化
 	comsumer := queue.InitComsumer(define.TaskFinishedTopic, &queueMsgHandler{})
 	Q = queue.InitProducer()
