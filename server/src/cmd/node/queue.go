@@ -53,13 +53,24 @@ func excuteTask(task *define.Task) {
 			continue
 		}
 		wlog.Infof("[%d][%s]下载结束,开始上传 \n", i+1, v.Desc)
-		err = quanmin.Upload(filePath, v.Desc)
-		if err != nil {
-			wlog.Errorf("[%s][%s]上传发生错误:%s \n", v.Desc, v.DownloadURL, err)
+		tyrTimes := 3
+		isSuccess := false
+		for tyrTimes > 0 {
+			err = quanmin.Upload(filePath, v.Desc)
+			if err != nil {
+				wlog.Errorf("[%s][%s]上传发生错误:%s 即将重试 \n", v.Desc, v.DownloadURL, err)
+				tyrTimes--
+				continue
+			}
+			isSuccess = true
+			wlog.Infof("[%s]上传完毕 \n", v.Desc)
+			break
+		}
+		if !isSuccess {
+			wlog.Errorf("[%s][%s]上传失败:%s \n", v.Desc, v.DownloadURL)
 			continue
 		}
 
-		wlog.Infof("[%s]上传完毕 \n", v.Desc)
 		finishedList = append(finishedList, v.AwemeID)
 
 		// 发送任务完成消息
