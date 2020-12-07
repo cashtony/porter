@@ -18,28 +18,28 @@
 </template>
 
 <script>
-import { bindAdd } from "@/api/table";
+import { bindAdd } from '@/api/table'
 
 export default {
-  name: "AddAccount",
+  name: 'AddAccount',
   data() {
     return {
-      content: "",
-    };
+      content: ''
+    }
   },
   methods: {
     onSubmit() {
-      bindAdd({ content: this.content }).then((response) => {
+      bindAdd({ content: this.content }).then(response => {
         if (response.code === 1000) {
-          this.$message.success("成功");
-          this.content = "";
+          this.$message.success('成功')
+          this.content = ''
         } else {
-          this.$message.error("操作失败,请联系管理员");
+          this.$message.error('操作失败,请联系管理员')
         }
-      });
-    },
-  },
-};
+      })
+    }
+  }
+}
 </script>
 
 <style lang="scss" scoped>

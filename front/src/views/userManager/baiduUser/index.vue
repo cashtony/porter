@@ -1,0 +1,234 @@
+<template>
+  <div class="content">
+    <el-table
+      v-loading="listLoading"
+      :data="list"
+      element-loading-text="Loading"
+      border
+      fit
+      highlight-current-row
+    >
+      <el-table-column
+        label="UID"
+        width="150"
+        align="center"
+      >
+        <template slot-scope="scope">
+          <span>{{ scope.row.uid }}</span>
+        </template>
+      </el-table-column>
+
+      <el-table-column
+        label="账号"
+        width="150"
+        align="center"
+      >
+        <template slot-scope="scope">
+          <span>{{ scope.row.userName }}</span>
+        </template>
+      </el-table-column>
+
+      <el-table-column
+        label="昵称"
+        width="150"
+        align="center"
+      >
+        <template slot-scope="scope">
+          <span>{{ scope.row.nickName }}</span>
+        </template>
+      </el-table-column>
+
+      <el-table-column
+        label="粉丝数"
+        width="150"
+        align="center"
+      >
+        <template slot-scope="scope">
+          <span>{{ scope.row.fansNum }}</span>
+        </template>
+      </el-table-column>
+
+      <el-table-column
+        label="钻石数"
+        width="150"
+        align="center"
+      >
+        <template slot-scope="scope">
+          <span>{{ scope.row.diamond }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column
+        label="视频数量"
+        width="150"
+        align="center"
+      >
+        <template slot-scope="scope">
+          <span>{{ scope.row.videoCount }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column
+        label="抖音绑定"
+        width="150"
+        align="center"
+      >
+        <template slot-scope="scope">
+          <span>{{ scope.row.douyinUID }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column
+        label="创建时间"
+        align="center"
+      >
+        <template slot-scope="scope">
+          <span>{{ scope.row.createTime }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column
+        label="操作"
+        align="center"
+      >
+        <template slot-scope="scope">
+          <span>
+            <el-button
+              type="primary"
+              size="mini"
+              @click="onEdit(scope.row)"
+            >修改绑定</el-button>
+          </span>
+        </template>
+      </el-table-column>
+    </el-table>
+
+    <el-pagination
+      layout="prev, pager, next"
+      :total="totalNum"
+      :page-size="20"
+      @current-change="handleCurrentChange"
+    />
+
+    <el-dialog
+      :title="dialogStatusMap[dialogStatus]"
+      :visible.sync="dialogFormVisible"
+    >
+      <el-form :model="dialogForm">
+
+        <el-form-item label="uid">
+          <el-input
+            v-model="dialogForm.uid"
+            :disabled="true"
+          />
+        </el-form-item>
+        <el-form-item label="昵称">
+          <el-input
+            v-model="dialogForm.nickName"
+            :disabled="true"
+          />
+        </el-form-item>
+        <el-form-item label="绑定的抖音号">
+          <el-input v-model="dialogForm.douyinUID" />
+        </el-form-item>
+      </el-form>
+      <div
+        slot="footer"
+        class="dialog-footer"
+      >
+        <el-button @click="dialogFormVisible = false">
+          取消
+        </el-button>
+        <el-button
+          type="primary"
+          @click="dialogStatus==='create'?createData():updateData()"
+        >
+          确定
+        </el-button>
+      </div>
+    </el-dialog>
+  </div>
+</template>
+
+<script>
+import { getBaiduUserList, editBaiduUser } from '@/api/table'
+
+export default {
+  name: 'BaiduAccountList',
+  data() {
+    return {
+      list: null,
+      totalNum: 0,
+      listLoading: true,
+      listQuery: {
+        page: 1,
+        limit: 20
+      },
+      dialogForm: {
+        uid: '',
+        userName: '',
+        nickName: '',
+        douyinUID: ''
+      },
+      dialogStatusMap: { update: '修改数据', create: '新增抖音用户' },
+      dialogFormVisible: false,
+      dialogStatus: 'update'
+    }
+  },
+  created() {
+    this.fetchData()
+  },
+  methods: {
+    fetchData() {
+      getBaiduUserList(this.listQuery).then(response => {
+        this.list = response.users
+        this.totalNum = response.totalNum
+        this.listLoading = false
+      })
+    },
+    handleCurrentChange(num) {
+      this.listQuery.page = num
+      this.fetchData()
+    },
+    resetDialogForm() {
+      this.dialogForm = {
+        uid: '',
+        userName: '',
+        nickName: '',
+        douyinUID: ''
+      }
+    },
+    onEdit(row) {
+      this.dialogFormVisible = true
+      this.dialogStatus = 'update'
+      this.dialogForm = Object.assign({}, row) // copy obj
+    },
+    updateData() {
+      console.log('update')
+      const tempData = Object.assign({}, this.dialogForm)
+
+      editBaiduUser(tempData).then(response => {
+        if (response.code !== 1000) {
+          this.$notify({
+            title: '操作失败了,请稍后再试:' + response.code,
+            type: 'failed',
+            duration: 2000
+          })
+          return
+        }
+
+        this.dialogFormVisible = false
+
+        this.$notify({
+          title: '用户数据变更',
+          message: '更新成功',
+          type: 'success',
+          duration: 2000
+        })
+
+        this.fetchData()
+      })
+    },
+    createData() {}
+  }
+}
+</script>
+
+<style lang="scss" scoped>
+</style>

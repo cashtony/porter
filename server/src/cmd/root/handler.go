@@ -142,7 +142,15 @@ func BaiduUserList(c *gin.Context) {
 }
 
 func ImmediatelyUpdate(c *gin.Context) {
-	UpdateAndUpload()
+	if isUpdading {
+		c.JSON(http.StatusOK, gin.H{
+			"code": define.AlreadyUpdating,
+		})
+
+		return
+	}
+
+	go UpdateAndUpload()
 }
 
 func ReloadUserVideoList(c *gin.Context) {
@@ -164,10 +172,10 @@ func ReloadUserVideoList(c *gin.Context) {
 	})
 }
 
-func ChangeBind(c *gin.Context) {
+func BaiduUserEdit(c *gin.Context) {
 	param := &struct {
-		BaiduUID      string `json:"baiduUID"`
-		BindDouyinUID string `json:"bindDouyinUID"`
+		UID       string `json:"uid"`
+		DouyinUID string `json:"douyinUID"`
 	}{}
 
 	err := c.BindJSON(param)
@@ -176,7 +184,7 @@ func ChangeBind(c *gin.Context) {
 		return
 	}
 
-	result := DB.Model(&BaiduUser{}).Where("uid = ?", param.BaiduUID).Update("douyin_uid", param.BindDouyinUID)
+	result := DB.Model(&BaiduUser{}).Where("uid = ?", param.UID).Update("douyin_uid", param.DouyinUID)
 	if result.Error != nil {
 		c.JSON(http.StatusOK, gin.H{"code": define.CannotBind})
 		return

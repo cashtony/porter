@@ -8,7 +8,7 @@ import (
 	"os"
 	"porter/requester"
 	"porter/wlog"
-	"strings"
+	"regexp"
 	"time"
 
 	"github.com/bitly/go-simplejson"
@@ -73,6 +73,8 @@ func UserVideoList(uid string) []*DYVideo {
 	return videoList
 }
 
+var re, _ = regexp.Compile(`[\*\\:?"/<>|]`)
+
 func download(dirName, fileName, downloadURL string) (string, error) {
 	client := requester.NewHTTPClient()
 	client.SetUserAgent(requester.MobileUserAgent)
@@ -96,7 +98,7 @@ func download(dirName, fileName, downloadURL string) (string, error) {
 	dirPath := fmt.Sprintf("temp/%s", dirName)
 	os.MkdirAll(dirPath, os.ModePerm)
 	// 去掉特殊字符,否则windows下会报错The filename, directory name, or volume label syntax is incorrect.
-	fileName = strings.ReplaceAll(fileName, "?", "")
+	fileName = re.ReplaceAllString(fileName, "")
 	filePath := fmt.Sprintf("%s/%s/%s.mp4", cmd, dirPath, fileName)
 	f, err := os.Create(filePath)
 	if err != nil {

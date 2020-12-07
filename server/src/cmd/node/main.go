@@ -32,6 +32,7 @@ func main() {
 	Q = queue.InitProducer()
 
 	wlog.Info("等待新任务中...")
+
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 	<-sigChan

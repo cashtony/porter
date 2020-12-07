@@ -8,15 +8,9 @@
       fit
       highlight-current-row
     >
-      <el-table-column label="UID" width="150" align="center">
+      <el-table-column label="UID" width="200" align="center">
         <template slot-scope="scope">
           <span>{{ scope.row.uid }}</span>
-        </template>
-      </el-table-column>
-
-      <el-table-column label="账号" width="150" align="center">
-        <template slot-scope="scope">
-          <span>{{ scope.row.userName }}</span>
         </template>
       </el-table-column>
 
@@ -32,21 +26,12 @@
         </template>
       </el-table-column>
 
-      <el-table-column label="钻石数" width="150" align="center">
-        <template slot-scope="scope">
-          <span>{{ scope.row.diamond }}</span>
-        </template>
-      </el-table-column>
       <el-table-column label="视频数量" width="150" align="center">
         <template slot-scope="scope">
           <span>{{ scope.row.videoCount }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="抖音绑定" width="150" align="center">
-        <template slot-scope="scope">
-          <span>{{ scope.row.douyinUID }}</span>
-        </template>
-      </el-table-column>
+
       <el-table-column label="创建时间" align="center">
         <template slot-scope="scope">
           <span>{{ scope.row.createTime }}</span>
@@ -59,16 +44,15 @@
       :total="totalNum"
       :page-size="20"
       @current-change="handleCurrentChange"
-    >
-    </el-pagination>
+    />
   </div>
 </template>
 
 <script>
-import { getBaiduUserList } from "@/api/table";
+import { getDouyinUserList } from '@/api/table'
 
 export default {
-  name: "BaiduAccountList",
+  name: 'DouyinAccountList',
   data() {
     return {
       list: null,
@@ -76,27 +60,27 @@ export default {
       listLoading: true,
       listQuery: {
         page: 1,
-        limit: 20,
-      },
-    };
+        limit: 20
+      }
+    }
   },
   created() {
-    this.fetchData();
+    this.fetchData()
   },
   methods: {
     fetchData() {
-      getBaiduUserList(this.listQuery).then((response) => {
-        this.list = response.users;
-        this.totalNum = response.totalNum;
-        this.listLoading = false;
-      });
+      getDouyinUserList(this.listQuery).then(response => {
+        this.list = response.users
+        this.totalNum = response.totalNum
+        this.listLoading = false
+      })
     },
     handleCurrentChange(num) {
-      this.listQuery.page = num;
-      this.fetchData();
-    },
-  },
-};
+      this.listQuery.page = num
+      this.fetchData()
+    }
+  }
+}
 </script>
 
 <style lang="scss" scoped>

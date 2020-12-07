@@ -23,12 +23,18 @@ func UpdateAndUpload() {
 	isUpdading = true
 
 	// 更新抖音用户视频数据
+	wlog.Info("开始更新抖音用户数据")
 	UpdateDouyinUsers()
+	wlog.Info("抖音用户数据更新完毕")
 	// 更新百度用户数据(主要是钻石)
+	wlog.Info("开始更新百度用户数据")
 	UpdateBaiduUsers()
-	// 更新百度视频数据
-	BaiduUsersUpload()
+	wlog.Info("百度用户数据更新完毕")
 
+	// 更新百度视频数据
+	wlog.Info("开始发布百度用户视频任务")
+	BaiduUsersUpload()
+	wlog.Info("百度用户视频任务发布完毕")
 	isUpdading = false
 	wlog.Info("更新完毕")
 
@@ -82,7 +88,7 @@ func BaiduUsersUpload() {
 	traffic := make(chan int, define.ParallelNum)
 	// 开始上传视频
 	bdUsers := make([]*BaiduUser, 0)
-	result := DB.Model(&BaiduUser{}).Where("last_upload_time < current_date and douyin_uid != ''").Find(bdUsers)
+	result := DB.Model(&BaiduUser{}).Where("last_upload_time < current_date and douyin_uid != ''").Find(&bdUsers)
 	if result.Error != nil {
 		wlog.Error("定时任务获取百度用户时发生错误:", result.Error)
 		return

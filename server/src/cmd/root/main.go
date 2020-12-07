@@ -55,8 +55,10 @@ func main() {
 	g.POST("/douyin/user/list", DouyinUserList)
 	g.POST("/douyin/user/reloadVideoList", ReloadUserVideoList)
 	g.POST("/baidu/user/list", BaiduUserList)
+	g.POST("/baidu/user/edit", BaiduUserEdit)
 	g.POST("/bind/add", BindAdd)
 
+	g.GET("/statistic", GetStatistic)
 	g.GET("/immediatelyUpdate", ImmediatelyUpdate)
 
 	g.Run(*Host)

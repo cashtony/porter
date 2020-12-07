@@ -145,7 +145,7 @@ func (b *BaiduUser) Upload() {
 		return
 	}
 	if len(uploadVideoList) == 0 {
-		wlog.Infof("用户[%s][%s]昨天没有更新,将获取以前的视频 \n", b.UID, b.Nickname)
+		wlog.Infof("用户[%s][%s]绑定的抖音号昨天没有更新,将获取以前的视频 \n", b.UID, b.Nickname)
 		videoModel.Debug().Find(&uploadVideoList)
 		if DB.Error != nil {
 			wlog.Errorf("从数据库中获取用户[%s][%s]视频列表信息失败:%s \n", b.UID, b.Nickname, DB.Error)
@@ -154,7 +154,7 @@ func (b *BaiduUser) Upload() {
 	}
 
 	if len(uploadVideoList) == 0 {
-		wlog.Infof("用户[%s][%s]没有可更新内容,退出 \n", b.UID, b.Nickname)
+		wlog.Infof("用户[%s][%s]绑定的抖音号没有可更新内容,退出 \n", b.UID, b.Nickname)
 		return
 	}
 

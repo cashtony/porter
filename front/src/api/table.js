@@ -15,6 +15,14 @@ export function getDouyinUserList(data) {
   })
 }
 
+export function editBaiduUser(data) {
+  return request({
+    url: '/baidu/user/edit',
+    method: 'post',
+    data
+  })
+}
+
 export function getDouyinUserVideo(data) {
   return request({
     url: '/douyin/videoList',

@@ -51,48 +51,62 @@ export const constantRoutes = [
       path: 'dashboard',
       name: 'Dashboard',
       component: () => import('@/views/dashboard/index'),
-      meta: { title: 'Dashboard', icon: 'dashboard' }
+      meta: { title: '首页' }
     }]
   },
   {
-    path: '/operate',
+    path: '/userManager',
     component: Layout,
-    name: 'operate',
-    redirect: '/operate/add',
-    // meta: { title: '数据操作', icon: 'el-icon-s-help' },
+    name: 'userManager',
+    redirect: '/userManager/batch',
+    meta: { title: '用户管理' },
     children: [
       {
-        path: '/operate/add',
-        name: '增加数据',
-        component: () => import('@/views/operate/index'),
-        meta: { title: '增加数据', icon: 'tree' }
-      }
-    ]
-
-  },
-  {
-    path: '/douyin',
-    component: Layout,
-    name: 'douyin',
-    children: [
+        path: '/batch',
+        name: '批量增加',
+        component: () => import('@/views/userManager/batch/index'),
+        meta: { title: '批量增加' }
+      },
       {
-        path: '/douyin/list',
+        path: '/douyin',
         name: '抖音用户',
-        component: () => import('@/views/douyin/index'),
-        meta: { title: '抖音用户', icon: 'table' }
+        component: () => import('@/views/userManager/douyinUser/index'),
+        meta: { title: '抖音用户' }
+      },
+      {
+        path: '/baidu',
+        name: '百度用户',
+        component: () => import('@/views/userManager/baiduUser/index'),
+        meta: { title: '百度用户' }
       }
     ]
   },
   {
-    path: '/baidu',
+    path: '/statistic',
     component: Layout,
-    name: 'baidu',
+    name: 'statistic',
+    redirect: '/statistic/upload',
     children: [
       {
-        path: '/baidu/list',
-        name: '百度用户',
-        component: () => import('@/views/baidu/index'),
-        meta: { title: '百度用户', icon: 'table' }
+        path: '/upload',
+        name: '上传统计',
+        component: () => import('@/views/statistic/index'),
+        meta: { title: '统计' }
+      }
+    ]
+  },
+  {
+    path: '/control',
+    component: Layout,
+    name: 'control',
+    redirect: '/control/dailyUpdate',
+    // meta: { title: '控制' },
+    children: [
+      {
+        path: '/dailyUpdate',
+        name: 'dailyUpdate',
+        component: () => import('@/views/control/index'),
+        meta: { title: '控制' }
       }
     ]
   },
