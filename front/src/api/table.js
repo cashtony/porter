@@ -45,3 +45,11 @@ export function bindList(params) {
     params
   })
 }
+
+export function getStatistic(data) {
+  return request({
+    url: '/statistic',
+    method: 'post',
+    data
+  })
+}

@@ -85,28 +85,32 @@ export const constantRoutes = [
     path: '/statistic',
     component: Layout,
     name: 'statistic',
-    redirect: '/statistic/upload',
+    redirect: '/statistic/date',
+    meta: { title: '统计' },
     children: [
       {
-        path: '/upload',
-        name: '上传统计',
-        component: () => import('@/views/statistic/index'),
-        meta: { title: '统计' }
+        path: '/date',
+        component: () => import('@/views/statistic/date/index'),
+        meta: { title: '按日期' }
+      },
+      {
+        path: '/user',
+        component: () => import('@/views/statistic/user/index'),
+        meta: { title: '按用户' }
       }
     ]
   },
   {
-    path: '/control',
+    path: '/manage',
     component: Layout,
-    name: 'control',
-    redirect: '/control/dailyUpdate',
-    // meta: { title: '控制' },
+    name: 'manage',
+    redirect: '/manage/dailyUpdate',
     children: [
       {
         path: '/dailyUpdate',
         name: 'dailyUpdate',
-        component: () => import('@/views/control/index'),
-        meta: { title: '控制' }
+        component: () => import('@/views/manage/index'),
+        meta: { title: '管理' }
       }
     ]
   },

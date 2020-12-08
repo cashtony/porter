@@ -40,14 +40,19 @@ func NewDouYinUser(shareURL string) (*DouyinUser, error) {
 	return user, nil
 }
 
-func (u *DouyinUser) initUserInfo() error {
+func (u *DouyinUser) initSecID() {
 	resp, err := requester.DefaultClient.Req("GET", u.ShareURL, nil, nil)
 	if err != nil {
-		return fmt.Errorf("访问失败: %s %s", u.ShareURL, err)
+		wlog.Error("获取secid失败: %s %s", u.ShareURL, err)
+		return
 	}
 	defer resp.Body.Close()
 
 	u.secUID = resp.Request.URL.Query().Get("sec_uid")
+}
+
+func (u *DouyinUser) initUserInfo() error {
+	u.initSecID()
 
 	infoReq := fmt.Sprintf("%s?sec_uid=%s", define.GetUserInfo, u.secUID)
 	infoResp, err := requester.DefaultClient.Req("GET", infoReq, nil, nil)

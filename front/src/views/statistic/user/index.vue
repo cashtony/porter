@@ -1,7 +1,5 @@
 <template>
-  <div>
-    控制界面
-  </div>
+  <div>按用户查询</div>
 </template>
 
 <script>

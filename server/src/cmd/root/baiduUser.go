@@ -8,6 +8,7 @@ import (
 	"porter/define"
 	"porter/requester"
 	"porter/wlog"
+	"regexp"
 	"time"
 
 	"github.com/bitly/go-simplejson"
@@ -133,21 +134,53 @@ func (b *BaiduUser) fetchUsernInfo() error {
 	return nil
 }
 
-func (b *BaiduUser) Upload() {
-	// 上传视频(从未上传的视频中挑选8-12条)
-	randomNum := rand.Intn(MaxUploadNum-MinUploadNum) + MinUploadNum
-	uploadVideoList := make([]*DouyinVideo, 0)
-	videoModel := DB.Model(&DouyinVideo{}).Where("author_uid = ? and state = ?", b.DouyinUID, WaitUpload).Order("create_time desc").Limit(randomNum)
+var uploadDescReg, _ = regexp.Compile(`(抖音|dou)`)
 
-	result := videoModel.Debug().Where("date(create_time) = current_date - 1").Find(&uploadVideoList)
+func (b *BaiduUser) newlyVideoList() ([]*DouyinVideo, error) {
+	videoList := make([]*DouyinVideo, 0)
+	result := DB.Model(&DouyinVideo{}).
+		Where("author_uid = ? and state = ? and date(create_time) >= current_date - 1", b.DouyinUID, WaitUpload).
+		Order("create_time desc").
+		Find(&videoList)
+
 	if result.Error != nil {
-		wlog.Errorf("从数据库中获取用户[%s][%s]视频列表信息失败:%s \n", b.UID, b.Nickname, DB.Error)
+		return nil, result.Error
+	}
+
+	return videoList, nil
+}
+
+func (b *BaiduUser) olderVideoList() ([]*DouyinVideo, error) {
+	randomNum := rand.Intn(MaxUploadNum-MinUploadNum) + MinUploadNum
+	videoList := make([]*DouyinVideo, 0)
+	result := DB.Model(&DouyinVideo{}).
+		Where("author_uid = ? and state = ?", b.DouyinUID, WaitUpload).
+		Order("create_time desc").
+		Limit(randomNum).
+		Find(&videoList)
+
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	return videoList, nil
+}
+
+// UploadNewOrOlderVideo 上传之前的老视频
+func (b *BaiduUser) UploadVideo(utype UpdateType) {
+	// 上传视频(从未上传的视频中挑选8-12条)
+	uploadVideoList := make([]*DouyinVideo, 0)
+
+	uploadVideoList, err := b.newlyVideoList()
+	if err != nil {
+		wlog.Errorf("从数据库中获取用户[%s][%s]最新视频列表信息失败:%s \n", b.UID, b.Nickname, DB.Error)
 		return
 	}
-	if len(uploadVideoList) == 0 {
+
+	if len(uploadVideoList) == 0 && utype == UpdateTypeDaily {
 		wlog.Infof("用户[%s][%s]绑定的抖音号昨天没有更新,将获取以前的视频 \n", b.UID, b.Nickname)
-		videoModel.Debug().Find(&uploadVideoList)
-		if DB.Error != nil {
+		uploadVideoList, err = b.olderVideoList()
+		if err != nil {
 			wlog.Errorf("从数据库中获取用户[%s][%s]视频列表信息失败:%s \n", b.UID, b.Nickname, DB.Error)
 			return
 		}
@@ -158,6 +191,10 @@ func (b *BaiduUser) Upload() {
 		return
 	}
 
+	b.doUpdate(uploadVideoList)
+}
+
+func (b *BaiduUser) doUpdate(uploadVideoList []*DouyinVideo) {
 	// 查找视频下载url
 	taskVideoList := make([]*define.TaskVideo, 0)
 	statisticList := make([]*Statistic, 0)
@@ -170,7 +207,7 @@ func (b *BaiduUser) Upload() {
 		}
 		taskVideoList = append(taskVideoList, &define.TaskVideo{
 			AwemeID:     v.AwemeID,
-			Desc:        v.Desc,
+			Desc:        uploadDescReg.ReplaceAllString(v.Desc, ""),
 			DownloadURL: fmt.Sprintf("%s/?video_id=%s&ratio=720p&line=0", define.GetVideoDownload, videoExtranInfo.VID),
 		})
 
@@ -210,7 +247,7 @@ func (b *BaiduUser) Upload() {
 	}
 
 	//更新用户的最后上传字段
-	result = DB.Model(b).Update("last_upload_time", time.Now())
+	result := DB.Model(b).Update("last_upload_time", time.Now())
 	if result.Error != nil {
 		wlog.Errorf("从数据库中更新用户[%s][%s]last_upload_time字段失败: %s \n", b.UID, b.Nickname, DB.Error)
 		return

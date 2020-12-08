@@ -5,8 +5,10 @@ import (
 	"porter/define"
 	"porter/wlog"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 func BindAdd(c *gin.Context) {
@@ -67,7 +69,7 @@ func BindAdd(c *gin.Context) {
 
 		go func() {
 			dy.initVideoList()
-			bd.Upload()
+			bd.UploadVideo(UpdateTypeDaily)
 		}()
 
 		sucNum++
@@ -102,7 +104,7 @@ func DouyinUserList(c *gin.Context) {
 	totalNum := int64(0)
 	result := DB.Model(&DouyinUser{}).Count(&totalNum).Offset((param.Page - 1) * param.Limit).Limit(param.Limit).Order("create_time desc").Find(&users)
 	if result.Error != nil {
-		c.JSON(http.StatusOK, gin.H{"code": define.QueryErr})
+		c.JSON(http.StatusOK, gin.H{"code": define.QueryDataErr})
 		return
 	}
 
@@ -130,7 +132,7 @@ func BaiduUserList(c *gin.Context) {
 	totalNum := int64(0)
 	result := DB.Model(&BaiduUser{}).Count(&totalNum).Offset((param.Page - 1) * param.Limit).Limit(param.Limit).Order("create_time desc").Find(&users)
 	if result.Error != nil {
-		c.JSON(http.StatusOK, gin.H{"code": define.QueryErr})
+		c.JSON(http.StatusOK, gin.H{"code": define.QueryDataErr})
 		return
 	}
 
@@ -141,7 +143,7 @@ func BaiduUserList(c *gin.Context) {
 	})
 }
 
-func ImmediatelyUpdate(c *gin.Context) {
+func ManuallyDailyUpdate(c *gin.Context) {
 	if isUpdading {
 		c.JSON(http.StatusOK, gin.H{
 			"code": define.AlreadyUpdating,
@@ -150,7 +152,27 @@ func ImmediatelyUpdate(c *gin.Context) {
 		return
 	}
 
-	go UpdateAndUpload()
+	go DailyUpdate()
+
+	c.JSON(http.StatusOK, gin.H{
+		"code": define.Success,
+	})
+}
+
+func ManuallyNewVideoUpdate(c *gin.Context) {
+	if isUpdading {
+		c.JSON(http.StatusOK, gin.H{
+			"code": define.AlreadyUpdating,
+		})
+
+		return
+	}
+
+	go NewlyUpdate()
+
+	c.JSON(http.StatusOK, gin.H{
+		"code": define.Success,
+	})
 }
 
 func ReloadUserVideoList(c *gin.Context) {
@@ -197,10 +219,11 @@ func BaiduUserEdit(c *gin.Context) {
 
 func GetStatistic(c *gin.Context) {
 	param := &struct {
-		DouyinUID string `json:"douyinUID"`
-		StartTime int    `json:"startTime"`
-		EndTime   int    `json:"endTime"`
-	}{}
+		UID      string `json:"uid"`
+		PickDate string `json:"pickDate"`
+		Page     int    `json:"page"`
+		Limit    int    `json:"limit"`
+	}{Page: 1, Limit: 10}
 
 	err := c.BindJSON(param)
 	if err != nil {
@@ -208,4 +231,28 @@ func GetStatistic(c *gin.Context) {
 		return
 	}
 
+	totalNum := int64(0)
+	list := make([]*StatisticRough, 0)
+	subDB := DB.Model(&Statistic{}).
+		Select("date(upload_time) as date, baidu_users.nickname as nickname, baidu_uid as uid, count(id) as num").
+		Group("baidu_uid, nickname").
+		Joins("left join baidu_users on statistics.baidu_uid = baidu_users.uid")
+	if param.UID != "" {
+		subDB = subDB.Where("baidu_uid = ?", param.UID)
+	}
+	if param.PickDate != "" {
+		subDB = subDB.Where("date(upload_time) = ?", param.PickDate)
+	} else {
+		subDB = subDB.Where("date(upload_time) = ?", time.Now().Format("2006-01-02"))
+	}
+
+	// 这里gorm有个bug, 如果直接使用一个session进行查询数量的时候生成的语句是有问题的
+	subDB.Session(&gorm.Session{}).Count(&totalNum)
+	subDB.Order("num desc").Group("date").Find(&list)
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":     define.Success,
+		"list":     list,
+		"totalNum": totalNum,
+	})
 }

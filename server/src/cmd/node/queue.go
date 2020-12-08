@@ -36,7 +36,7 @@ func (q *queueMsgHandler) HandleMessage(m *nsq.Message) error {
 }
 
 func excuteTask(task *define.Task) {
-	wlog.Infof("接收到任务:%+v \n", task)
+	wlog.Infof("用户[%s]接收到任务 数量:%d \n", task.Nickname, len(task.Videos))
 	if task.Bduss == "" {
 		wlog.Errorf("[%s] bduss为空 任务错误: \n", task.Nickname)
 		return

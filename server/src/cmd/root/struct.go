@@ -39,3 +39,18 @@ type Statistic struct {
 	UploadTime time.Time `gorm:"default:now()"` // 上传时间
 	State      int       // 上传状态 0:上传成功 1:上传中
 }
+
+// 一级页面显示 XX用户多少条视频
+type StatisticRough struct {
+	UID      string `json:"uid"`
+	Nickname string `json:"nickname"`
+	Date     string `json:"date"`
+	Num      int    `json:"num"`
+}
+
+// 二级页面,选择了某个用户查看详情时显示
+type StatisticDetail struct {
+	UID        string    `json:"uid"`
+	VideoDesc  string    `json:"videoDesc"`
+	UploadTime time.Time `json:"uploadTime"`
+}
