@@ -9,7 +9,6 @@ import (
 	"porter/wlog"
 	"time"
 
-	"github.com/gin-contrib/static"
 	"github.com/gin-gonic/gin"
 	"github.com/nsqio/go-nsq"
 	"github.com/robfig/cron/v3"
@@ -27,6 +26,8 @@ func main() {
 
 	if *Mode == "debug" {
 		wlog.DevelopMode()
+	} else {
+		gin.SetMode(gin.ReleaseMode)
 	}
 	// db初始化
 	DB = db.NewPG()
@@ -46,7 +47,8 @@ func main() {
 
 	// gin初始化
 	g := gin.Default()
-	g.Use(static.Serve("/", static.LocalFile("/www", false)))
+	g.Static("/bg", "./www/")
+	g.Static("/static", "./www/static")
 
 	g.POST("/account/login", Login)
 	g.POST("/account/logout", Logout)
@@ -55,6 +57,7 @@ func main() {
 	g.POST("/douyin/user/list", DouyinUserList)
 	g.POST("/baidu/user/list", BaiduUserList)
 	g.POST("/baidu/user/edit", BaiduUserEdit)
+	g.POST("/baidu/user/update", BaiduUserUpdate)
 	g.POST("/bind/add", BindAdd)
 
 	g.POST("/statistic", GetStatistic)

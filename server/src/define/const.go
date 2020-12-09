@@ -16,11 +16,16 @@ const (
 // 百度接口, cookie中带有bduss即可
 const (
 	GetBaiduBaseInfo = "https://pan.baidu.com/api/loginStatus?clienttype=5"
+
 	GetQuanminInfo   = "https://quanmin.baidu.com/wise/video/pcpub/userinfo"
+	GetQuanminInfoV2 = "https://quanmin.baidu.com/appui/user/mine?api_name=mine"
 	// POST https://quanmin.baidu.com/mvideo/api?api_name=userprofilesubmit  api_name=userprofile
 	// form  userprofilesubmit    nickname=超级码力366&user_type=ugc // 修改名称
 	// form：userprofile method=get&user_type=ugc 获取用户是否能改名之类的信息
 	QuanminAPI = "https://quanmin.baidu.com/mvideo/api"
+	// 全民视频数据(包含剩余钻石数量) POST https://quanmin.baidu.com/appui/user/mine?api_name=mine
+	// T豆查询 https://sv.baidu.com/liveserver/exchange/record?pn=1&rn=10&orderType=1&client_type=2
+	//
 )
 
 var (

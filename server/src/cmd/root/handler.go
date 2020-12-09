@@ -217,6 +217,39 @@ func BaiduUserEdit(c *gin.Context) {
 	})
 }
 
+func BaiduUserUpdate(c *gin.Context) {
+	param := &struct {
+		UID string `json:"uid,omitempty"`
+	}{}
+
+	err := c.BindJSON(param)
+	if err != nil {
+		wlog.Error("参数解析错误", err)
+		return
+	}
+
+	usersList := make([]*BaiduUser, 0)
+	subDB := DB.Model(&BaiduUser{})
+	if param.UID != "" {
+		subDB.Where("uid = ?", param.UID)
+	}
+
+	subDB.Find(&usersList)
+
+	for _, u := range usersList {
+		err := u.fetchQuanminInfo()
+		if err != nil {
+			wlog.Errorf("获取[%s][%s]全民视频用户数据时错误:%s", u.UID, u.Nickname, err)
+			continue
+		}
+		DB.Model(&BaiduUser{}).Where("uid = ?", u.UID).Updates(&BaiduUser{Diamond: u.Diamond})
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code": define.Success,
+	})
+}
+
 func GetStatistic(c *gin.Context) {
 	param := &struct {
 		UID      string `json:"uid"`
@@ -236,7 +269,7 @@ func GetStatistic(c *gin.Context) {
 	subDB := DB.Model(&Statistic{}).
 		Select("date(upload_time) as date, baidu_users.nickname as nickname, baidu_uid as uid, count(id) as num").
 		Group("baidu_uid, nickname").
-		Joins("left join baidu_users on statistics.baidu_uid = baidu_users.uid")
+		Joins("left join baidu_users on statistics.baidu_uid = baidu_users.uid").Where("state = ?", 1)
 	if param.UID != "" {
 		subDB = subDB.Where("baidu_uid = ?", param.UID)
 	}

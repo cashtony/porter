@@ -1,5 +1,13 @@
 import request from '@/utils/request'
 
+export function updateBaiduUser(data) {
+  return request({
+    url: '/baidu/user/update',
+    method: 'post',
+    data
+  })
+}
+
 export function getBaiduUserList(data) {
   return request({
     url: '/baidu/user/list',

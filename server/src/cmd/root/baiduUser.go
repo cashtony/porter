@@ -22,6 +22,7 @@ type BaiduUser struct {
 	Bduss          string          `gorm:"primaryKey" json:"dbuss"`
 	FansNum        int             `json:"fansNum"`
 	Diamond        int             `json:"diamond"`
+	Tbean          int             `json:"tbean"` // T豆
 	VideoCount     int             `json:"videoCount"`
 	DouyinUID      string          `json:"douyinUID"` // 绑定的抖音uid
 	CreateTime     define.JsonTime `gorm:"default:now()" json:"createTime"`
@@ -30,12 +31,74 @@ type BaiduUser struct {
 
 func NewBaiduUser(bduss string) (*BaiduUser, error) {
 	b := &BaiduUser{Bduss: bduss}
-	err := b.fetchUsernInfo()
+	err := b.fetcBaseInfo()
+	if err != nil {
+		return nil, fmt.Errorf("获取基本百度用户基本数据失败:%s", err)
+	}
 
-	return b, err
+	err = b.fetchQuanminInfo()
+	if err != nil {
+		return nil, fmt.Errorf("获取全民用户基本数据失败:%s", err)
+	}
+
+	return b, nil
 }
-func (b *BaiduUser) fetchUsernInfo() error {
-	client := requester.NewHTTPClient()
+
+func (b *BaiduUser) fetchQuanminInfo() error {
+	cookie := http.Cookie{Name: "BDUSS", Value: b.Bduss, Expires: time.Now().Add(180 * 24 * time.Hour)}
+	// 再获取全民视频相关数据
+	quanminReq, err := http.NewRequest("POST", define.GetQuanminInfoV2, nil)
+	if err != nil {
+		return fmt.Errorf("创建请求失败: %s", err)
+	}
+
+	quanminReq.AddCookie(&cookie)
+
+	quanminResp, err := requester.DefaultClient.Do(quanminReq)
+	if err != nil {
+		return fmt.Errorf("获取百度账号的基本信息出错: %s", err)
+	}
+	defer quanminResp.Body.Close()
+
+	quanminJ, err := simplejson.NewFromReader(quanminResp.Body)
+	if err != nil {
+		return fmt.Errorf("解析全民视频数据失败: %s", err)
+	}
+
+	mineJ := quanminJ.Get("mine")
+	errCode, err := mineJ.Get("status").Int()
+	if err != nil {
+		return fmt.Errorf("接口返回值错误: %s", err)
+	}
+
+	if errCode != 0 {
+		errMsg, _ := quanminJ.Get("msg").String()
+		return fmt.Errorf("请求获取全民账号数据失败: %d, 消息: %s", errCode, errMsg)
+	}
+
+	data := mineJ.Get("data")
+	diamond, err := data.Get("charm").Get("availablePointsNumber").Int()
+	if err != nil {
+		return fmt.Errorf("解析全民视频钻石数量获取失败: %s", err)
+	}
+	userJ := data.Get("user")
+	nickname, err := userJ.Get("userName").String()
+	if err != nil {
+		return fmt.Errorf("解析全民视频nickname失败: %s", err)
+	}
+	fansnum, err := userJ.Get("fansNum").Int()
+	if err != nil {
+		return fmt.Errorf("解析全民视频粉丝数量失败: %s", err)
+	}
+
+	b.Nickname = nickname
+	b.FansNum = fansnum
+	b.Diamond = diamond
+
+	return nil
+}
+
+func (b *BaiduUser) fetcBaseInfo() error {
 	cookie := http.Cookie{Name: "BDUSS", Value: b.Bduss, Expires: time.Now().Add(180 * 24 * time.Hour)}
 	req, err := http.NewRequest("GET", define.GetBaiduBaseInfo, nil)
 	if err != nil {
@@ -44,7 +107,7 @@ func (b *BaiduUser) fetchUsernInfo() error {
 	req.AddCookie(&cookie)
 
 	// 先获取基本数据
-	resp, err := client.Do(req)
+	resp, err := requester.DefaultClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("获取百度账号的基本信息出错: %s", err)
 	}
@@ -77,59 +140,6 @@ func (b *BaiduUser) fetchUsernInfo() error {
 
 	b.UID = uid
 	b.Username = username
-
-	// 再获取全民视频相关数据
-	quanminReq, err := http.NewRequest("GET", define.GetQuanminInfo, nil)
-	if err != nil {
-		return fmt.Errorf("创建请求失败: %s", err)
-	}
-
-	quanminReq.AddCookie(&cookie)
-
-	quanminResp, err := client.Do(quanminReq)
-	if err != nil {
-		return fmt.Errorf("获取百度账号的基本信息出错: %s", err)
-	}
-	defer quanminResp.Body.Close()
-
-	quanminJ, err := simplejson.NewFromReader(quanminResp.Body)
-	if err != nil {
-		return fmt.Errorf("解析全民视频数据失败: %s", err)
-	}
-
-	errCode, err = quanminJ.Get("errno").Int()
-	if err != nil {
-		return fmt.Errorf("接口返回值错误: %s", err)
-	}
-	errMsg, err = quanminJ.Get("errmsg").String()
-	if err != nil {
-		return fmt.Errorf("接口返回消息错误: %s", err)
-	}
-	if errCode != 0 {
-		return fmt.Errorf("请求获取全民账号数据失败: %d, 消息: %s", errCode, errMsg)
-	}
-
-	dataJ := quanminJ.Get("data")
-	nickname, err := dataJ.Get("name").String()
-	if err != nil {
-		return fmt.Errorf("解析全民视频nickname失败: %s", err)
-	}
-	fansnum, err := dataJ.Get("fans_num").Int()
-	if err != nil {
-		return fmt.Errorf("解析全民视频粉丝数量失败: %s", err)
-	}
-	diamond, err := dataJ.Get("points").Int()
-	if err != nil {
-		return fmt.Errorf("解析全民视频钻石数量失败: %s", err)
-	}
-	videoCount, err := dataJ.Get("video_count").Int()
-	if err != nil {
-		return fmt.Errorf("解析全民视频钻石数量失败: %s", err)
-	}
-	b.Nickname = nickname
-	b.FansNum = fansnum
-	b.Diamond = diamond
-	b.VideoCount = videoCount
 
 	return nil
 }
@@ -191,10 +201,10 @@ func (b *BaiduUser) UploadVideo(utype UpdateType) {
 		return
 	}
 
-	b.doUpdate(uploadVideoList)
+	b.doUpload(uploadVideoList)
 }
 
-func (b *BaiduUser) doUpdate(uploadVideoList []*DouyinVideo) {
+func (b *BaiduUser) doUpload(uploadVideoList []*DouyinVideo) {
 	// 查找视频下载url
 	taskVideoList := make([]*define.TaskVideo, 0)
 	statisticList := make([]*Statistic, 0)
