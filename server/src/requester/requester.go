@@ -54,7 +54,7 @@ type HTTPClient struct {
 func NewHTTPClient() *HTTPClient {
 	h := &HTTPClient{
 		Client: http.Client{
-			Timeout: 30 * time.Second,
+			Timeout: 300 * time.Second,
 		},
 		UserAgent: UserAgent,
 	}

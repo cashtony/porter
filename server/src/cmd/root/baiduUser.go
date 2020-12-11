@@ -144,7 +144,7 @@ func (b *BaiduUser) fetcBaseInfo() error {
 	return nil
 }
 
-var uploadDescReg, _ = regexp.Compile(`(抖音|dou)`)
+var uploadDescReg, _ = regexp.Compile(`(抖音|dou|DOU)`)
 
 func (b *BaiduUser) newlyVideoList() ([]*DouyinVideo, error) {
 	videoList := make([]*DouyinVideo, 0)
@@ -160,13 +160,16 @@ func (b *BaiduUser) newlyVideoList() ([]*DouyinVideo, error) {
 	return videoList, nil
 }
 
-func (b *BaiduUser) olderVideoList() ([]*DouyinVideo, error) {
-	randomNum := rand.Intn(MaxUploadNum-MinUploadNum) + MinUploadNum
+func (b *BaiduUser) olderVideoList(num int) ([]*DouyinVideo, error) {
+	if num == 0 {
+		num = rand.Intn(MaxUploadNum-MinUploadNum) + MinUploadNum
+	}
+
 	videoList := make([]*DouyinVideo, 0)
 	result := DB.Model(&DouyinVideo{}).
 		Where("author_uid = ? and state = ?", b.DouyinUID, WaitUpload).
 		Order("create_time desc").
-		Limit(randomNum).
+		Limit(num).
 		Find(&videoList)
 
 	if result.Error != nil {
@@ -189,7 +192,7 @@ func (b *BaiduUser) UploadVideo(utype UpdateType) {
 
 	if len(uploadVideoList) == 0 && utype == UpdateTypeDaily {
 		wlog.Infof("用户[%s][%s]绑定的抖音号昨天没有更新,将获取以前的视频 \n", b.UID, b.Nickname)
-		uploadVideoList, err = b.olderVideoList()
+		uploadVideoList, err = b.olderVideoList(0)
 		if err != nil {
 			wlog.Errorf("从数据库中获取用户[%s][%s]视频列表信息失败:%s \n", b.UID, b.Nickname, DB.Error)
 			return

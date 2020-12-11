@@ -16,7 +16,7 @@ const (
 // 百度接口, cookie中带有bduss即可
 const (
 	GetBaiduBaseInfo = "https://pan.baidu.com/api/loginStatus?clienttype=5"
-
+	// 加密信息获取
 	GetQuanminInfo   = "https://quanmin.baidu.com/wise/video/pcpub/userinfo"
 	GetQuanminInfoV2 = "https://quanmin.baidu.com/appui/user/mine?api_name=mine"
 	// POST https://quanmin.baidu.com/mvideo/api?api_name=userprofilesubmit  api_name=userprofile
@@ -25,10 +25,29 @@ const (
 	QuanminAPI = "https://quanmin.baidu.com/mvideo/api"
 	// 全民视频数据(包含剩余钻石数量) POST https://quanmin.baidu.com/appui/user/mine?api_name=mine
 	// T豆查询 https://sv.baidu.com/liveserver/exchange/record?pn=1&rn=10&orderType=1&client_type=2
-	//
+	UploadSpace    = "https://quanmin.baidu.com/wise/video/pcpub/getuploadid?video_num=1"
+	UploadPart     = "https://quanmin.baidu.com/wise/video/pcpub/uploadvideopart"
+	UploadFinished = "https://quanmin.baidu.com/wise/video/pcpub/finishupload"
+	UploadPoster   = "https://quanmin.baidu.com/wise/video/pcpub/uploadposter"
+	VideoPushlish  = "https://quanmin.baidu.com/wise/video/pcpub/publishvideo"
 )
 
 var (
 	TaskPushTopic     = "TaskPush"
 	TaskFinishedTopic = "TaskFinished"
+)
+
+const (
+	// B byte
+	B = (int64)(1 << (10 * iota))
+	// KB kilobyte
+	KB
+	// MB megabyte
+	MB
+	// GB gigabyte
+	GB
+	// TB terabyte
+	TB
+	// PB petabyte
+	PB
 )

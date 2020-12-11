@@ -55,7 +55,7 @@ func production() *zap.SugaredLogger {
 		zapcore.NewCore(encoder, zapcore.AddSync(warnWriter), warnLevel),
 	)
 
-	return zap.New(core, zap.AddCaller(), zap.AddCallerSkip(1)).Sugar()
+	return zap.New(core, zap.AddCaller()).Sugar()
 }
 
 func develope() *zap.SugaredLogger {
@@ -64,7 +64,7 @@ func develope() *zap.SugaredLogger {
 	config.EncoderConfig.EncodeTime = func(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
 		enc.AppendString(t.Format("2006-01-02 15:04:05"))
 	}
-	l, err := config.Build(zap.AddCallerSkip(1))
+	l, err := config.Build()
 	if err != nil {
 		log.Fatal("日志初始化失败")
 	}

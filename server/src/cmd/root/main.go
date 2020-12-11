@@ -15,7 +15,7 @@ import (
 	"gorm.io/gorm"
 )
 
-var Mode = flag.String("mode", "debug", "运行模式 debug:开发模式, release:产品模式")
+var Mode = flag.String("mode", "release", "运行模式 debug:开发模式, release:产品模式")
 var Host = flag.String("host", ":5000", "指定的地址")
 var DB *gorm.DB
 var Q *nsq.Producer
@@ -44,6 +44,7 @@ func main() {
 	// 定时器初始化, 每天早上8点开始进行用户视频的检测
 	c := cron.New()
 	c.AddFunc("0 8 * * *", DailyUpdate)
+	go c.Run()
 
 	// gin初始化
 	g := gin.Default()
@@ -65,8 +66,17 @@ func main() {
 	g.POST("/manage/manuallyDailyUpdate", ManuallyDailyUpdate)
 	g.POST("/manage/manuallyNewlyUpdate", ManuallyNewVideoUpdate)
 
+	// b, err := NewBaiduUser("NaV28xMlhWZWh-MmlaMjFZek9JNHB4S0trQUU5dXZDU3o3OFJITXB3ZVpZVVJmSVFBQUFBJCQAAAAAAAAAAAEAAABG-YPFwLO62dHXdGpqAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAJnUHF-Z1BxfOX")
+	// if err != nil {
+	// 	wlog.Error("err:", err)
+
+	// }
+	// b.DouyinUID = "2453734984792068"
+	// vlist, _ := b.olderVideoList(20)
+	// b.doUpload(vlist)
+
 	g.Run(*Host)
 
 	comsumer.Stop()
-
+	c.Stop()
 }

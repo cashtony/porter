@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -85,8 +84,8 @@ func download(dirName, fileName, downloadURL string) (string, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode == http.StatusForbidden {
-		return "", errors.New("访问被拒绝了")
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("下载时访问发生错误: %d", resp.StatusCode)
 	}
 
 	contentType := resp.Header.Get("Content-Type")
@@ -108,7 +107,7 @@ func download(dirName, fileName, downloadURL string) (string, error) {
 
 	_, err = io.Copy(f, resp.Body)
 	if err != nil {
-		return "", fmt.Errorf("交换空间时发生错误:%s", err)
+		return "", fmt.Errorf("复制文件时发生错误:%s", err)
 	}
 
 	return filePath, nil
@@ -116,5 +115,7 @@ func download(dirName, fileName, downloadURL string) (string, error) {
 
 func deleteUserDir(nickname string) {
 	dirPath := fmt.Sprintf("temp/%s", nickname)
+	os.RemoveAll(dirPath)
+	dirPath = fmt.Sprintf("thumbsnails/%s", nickname)
 	os.RemoveAll(dirPath)
 }
