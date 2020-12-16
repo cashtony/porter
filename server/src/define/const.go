@@ -30,11 +30,16 @@ const (
 	UploadFinished = "https://quanmin.baidu.com/wise/video/pcpub/finishupload"
 	UploadPoster   = "https://quanmin.baidu.com/wise/video/pcpub/uploadposter"
 	VideoPushlish  = "https://quanmin.baidu.com/wise/video/pcpub/publishvideo"
+
+	// 设置头像
+	SetPortrait = "https://passport.baidu.com/v2/sapi/center/setportrait"
 )
 
 var (
 	TaskPushTopic     = "TaskPush"
 	TaskFinishedTopic = "TaskFinished"
+
+	TaskChangeInfoTopic = "TaskChangeInfo"
 )
 
 const (

@@ -24,7 +24,7 @@ type BaiduUser struct {
 	Diamond        int             `json:"diamond"`
 	Tbean          int             `json:"tbean"` // T豆
 	VideoCount     int             `json:"videoCount"`
-	DouyinUID      string          `json:"douyinUID"` // 绑定的抖音uid
+	DouyinURL      string          `json:"douyinURL"` // 绑定的抖音uid
 	CreateTime     define.JsonTime `gorm:"default:now()" json:"createTime"`
 	LastUploadTime time.Time       `json:"lastUploadTime"`
 }
@@ -146,45 +146,49 @@ func (b *BaiduUser) fetcBaseInfo() error {
 
 var uploadDescReg, _ = regexp.Compile(`(抖音|dou|DOU)`)
 
-func (b *BaiduUser) newlyVideoList() ([]*DouyinVideo, error) {
-	videoList := make([]*DouyinVideo, 0)
-	result := DB.Model(&DouyinVideo{}).
-		Where("author_uid = ? and state = ? and date(create_time) >= current_date - 1", b.DouyinUID, WaitUpload).
-		Order("create_time desc").
-		Find(&videoList)
-
-	if result.Error != nil {
-		return nil, result.Error
-	}
-
-	return videoList, nil
-}
-
-func (b *BaiduUser) olderVideoList(num int) ([]*DouyinVideo, error) {
-	if num == 0 {
-		num = rand.Intn(MaxUploadNum-MinUploadNum) + MinUploadNum
-	}
+func (b *BaiduUser) getVideoList(num int, mode GetMode) ([]*DouyinVideo, error) {
+	page, limit := 1, 20
 
 	videoList := make([]*DouyinVideo, 0)
-	result := DB.Model(&DouyinVideo{}).
-		Where("author_uid = ? and state = ?", b.DouyinUID, WaitUpload).
-		Order("create_time desc").
-		Limit(num).
-		Find(&videoList)
+	for {
+		tmpList := make([]*DouyinVideo, 0)
+		subDB := DB.Model(&DouyinVideo{}).Where("share_url = ? and state = ?", b.DouyinURL, WaitUpload).Order("create_time desc")
+		if mode == GetModeNewly {
+			subDB.Where(" date(create_time) >= current_date - 1")
+		}
+		subDB.Offset((page - 1) * limit).Limit(limit).Find(&tmpList)
+		if subDB.Error != nil {
+			return nil, subDB.Error
+		}
 
-	if result.Error != nil {
-		return nil, result.Error
+		page++
+
+		if len(tmpList) == 0 {
+			return videoList, nil
+		}
+
+		for _, v := range tmpList {
+			// 检测视频是否还有效
+			info, err := getVideoExtraInfo(v.AwemeID)
+			if err != nil {
+				continue
+			}
+			v.VID = info.VID
+
+			videoList = append(videoList, v)
+			if len(videoList) >= num {
+				return videoList, nil
+			}
+		}
 	}
-
-	return videoList, nil
 }
 
 // UploadNewOrOlderVideo 上传之前的老视频
 func (b *BaiduUser) UploadVideo(utype UpdateType) {
 	// 上传视频(从未上传的视频中挑选8-12条)
 	uploadVideoList := make([]*DouyinVideo, 0)
-
-	uploadVideoList, err := b.newlyVideoList()
+	num := rand.Intn(MaxUploadNum-MinUploadNum) + MinUploadNum
+	uploadVideoList, err := b.getVideoList(num, GetModeNewly)
 	if err != nil {
 		wlog.Errorf("从数据库中获取用户[%s][%s]最新视频列表信息失败:%s \n", b.UID, b.Nickname, DB.Error)
 		return
@@ -192,7 +196,7 @@ func (b *BaiduUser) UploadVideo(utype UpdateType) {
 
 	if len(uploadVideoList) == 0 && utype == UpdateTypeDaily {
 		wlog.Infof("用户[%s][%s]绑定的抖音号昨天没有更新,将获取以前的视频 \n", b.UID, b.Nickname)
-		uploadVideoList, err = b.olderVideoList(0)
+		uploadVideoList, err = b.getVideoList(num, GetModeOlder)
 		if err != nil {
 			wlog.Errorf("从数据库中获取用户[%s][%s]视频列表信息失败:%s \n", b.UID, b.Nickname, DB.Error)
 			return
@@ -204,29 +208,24 @@ func (b *BaiduUser) UploadVideo(utype UpdateType) {
 		return
 	}
 
-	b.doUpload(uploadVideoList)
+	b.pulishTask(uploadVideoList)
 }
 
-func (b *BaiduUser) doUpload(uploadVideoList []*DouyinVideo) {
+func (b *BaiduUser) pulishTask(uploadVideoList []*DouyinVideo) {
 	// 查找视频下载url
-	taskVideoList := make([]*define.TaskVideo, 0)
+	taskVideoList := make([]*define.TaskUploadVideo, 0)
 	statisticList := make([]*Statistic, 0)
 
 	for _, v := range uploadVideoList {
-		videoExtranInfo, err := getVideoCreateTime(v.AwemeID)
-		if err != nil {
-			wlog.Error("获取视频额外数据发生错误:", err)
-			continue
-		}
-		taskVideoList = append(taskVideoList, &define.TaskVideo{
+		taskVideoList = append(taskVideoList, &define.TaskUploadVideo{
 			AwemeID:     v.AwemeID,
 			Desc:        uploadDescReg.ReplaceAllString(v.Desc, ""),
-			DownloadURL: fmt.Sprintf("%s/?video_id=%s&ratio=720p&line=0", define.GetVideoDownload, videoExtranInfo.VID),
+			DownloadURL: fmt.Sprintf("%s/?video_id=%s&ratio=720p&line=0", define.GetVideoDownload, v.VID),
 		})
 
 		statisticList = append(statisticList, &Statistic{
 			BaiduUID:  b.UID,
-			DouyinUID: b.DouyinUID,
+			DouyinURL: b.DouyinURL,
 			AwemeID:   v.AwemeID,
 			State:     WaitUpload,
 		})
@@ -238,8 +237,8 @@ func (b *BaiduUser) doUpload(uploadVideoList []*DouyinVideo) {
 	}
 
 	// 封装成task投递到任务队列中
-	wlog.Debugf("开始投放用户[%s][%s]任务: \n", b.UID, b.Nickname)
-	t := &define.Task{
+	wlog.Debugf("开始投放用户[%s][%s]任务, 数量:[%d] \n", b.UID, b.Nickname, len(taskVideoList))
+	t := &define.TaskUpload{
 		Bduss:    b.Bduss,
 		Videos:   taskVideoList,
 		Nickname: b.Nickname,

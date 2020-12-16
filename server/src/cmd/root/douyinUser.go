@@ -26,55 +26,6 @@ type DouyinUser struct {
 	secUID string // 用于填充获取用户数据接口
 }
 
-// NewDouYinUser 传入一个分享的url,类似https://v.douyin.com/qKDMXG/
-func NewDouYinUser(shareURL string) (*DouyinUser, error) {
-	// 获取个人信息
-	user := &DouyinUser{
-		ShareURL: shareURL,
-	}
-	err := user.initUserInfo()
-	if err != nil {
-		return user, err
-	}
-
-	return user, nil
-}
-
-func (u *DouyinUser) initSecID() {
-	resp, err := requester.DefaultClient.Req("GET", u.ShareURL, nil, nil)
-	if err != nil {
-		wlog.Error("获取secid失败: %s %s", u.ShareURL, err)
-		return
-	}
-	defer resp.Body.Close()
-
-	u.secUID = resp.Request.URL.Query().Get("sec_uid")
-}
-
-func (u *DouyinUser) initUserInfo() error {
-	u.initSecID()
-
-	infoReq := fmt.Sprintf("%s?sec_uid=%s", define.GetUserInfo, u.secUID)
-	infoResp, err := requester.DefaultClient.Req("GET", infoReq, nil, nil)
-	if err != nil {
-		return fmt.Errorf("获取用户数据时失败:%s %s", infoReq, err)
-	}
-	defer infoResp.Body.Close()
-
-	j, err := simplejson.NewFromReader(infoResp.Body)
-	if err != nil {
-		return fmt.Errorf("解析用户json数据失败: %s", err)
-	}
-
-	jUser := j.Get("user_info")
-	u.Nickname, _ = jUser.Get("nickname").String()
-	u.UniqueUID, _ = jUser.Get("unique_id").String()
-	u.UID, _ = jUser.Get("uid").String()
-	u.VideoCount, _ = jUser.Get("aweme_count").Int()
-	u.FansCount, _ = jUser.Get("follower_count").Int()
-	return nil
-}
-
 func (u *DouyinUser) initVideoList() {
 
 	var (
@@ -147,9 +98,10 @@ func (u *DouyinUser) OnePageVideo(cursor int64) ([]*DouyinVideo, bool, int64, er
 			}
 
 			//获取视频上传时间
-			videoExtraInfo, _ := getVideoCreateTime(video.AwemeID)
-
+			videoExtraInfo, _ := getVideoExtraInfo(video.AwemeID)
 			video.CreateTime = videoExtraInfo.CreateTime
+			video.VID = videoExtraInfo.VID
+
 			videoList = append(videoList, video)
 		}
 
@@ -220,7 +172,7 @@ func (d *DouyinUser) Update() {
 	}
 }
 
-func getVideoCreateTime(awemeid string) (*DouyinVideoExtraInfo, error) {
+func getVideoExtraInfo(awemeid string) (*DouyinVideoExtraInfo, error) {
 	info := &DouyinVideoExtraInfo{}
 	url := fmt.Sprintf("%s?item_ids=%s", define.GetVideoURI, awemeid)
 
@@ -228,11 +180,11 @@ func getVideoCreateTime(awemeid string) (*DouyinVideoExtraInfo, error) {
 	var resp *http.Response
 	var err error
 	for tryTimes > 0 {
-		// 设置间隔为了防止两次调用时间间隔过短导致握手失败
-		time.Sleep(500 * time.Millisecond)
 		resp, err = requester.DefaultClient.Req("GET", url, nil, nil)
 		if err != nil {
 			tryTimes--
+			// 设置间隔为了防止两次调用时间间隔过短导致握手失败
+			time.Sleep(1 * time.Second)
 			continue
 		}
 		break

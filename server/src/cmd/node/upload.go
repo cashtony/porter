@@ -1,23 +1,16 @@
-package quanmin
+package main
 
 import (
 	"bytes"
-	"crypto/aes"
-	"crypto/cipher"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"mime/multipart"
-	"net/http"
 	"net/textproto"
-	"net/url"
 	"os"
-	"os/exec"
 	"path"
 	"porter/define"
-	"porter/requester"
 	"porter/wlog"
 	"strconv"
 	"strings"
@@ -26,142 +19,9 @@ import (
 	"github.com/bitly/go-simplejson"
 )
 
-var (
-	baiduComURL = &url.URL{
-		Scheme: "http",
-		Host:   "baidu.com",
-	}
-	cookieDomain = ".baidu.com"
-	uploadURL    = "https://quanmin.baidu.com/web/publish/upload"
-)
-
-type baiduAccount struct {
-	uid    uint64 // 百度ID对应的uid
-	name   string
-	bduss  string // 百度BDUSS
-	PTOKEN string
-	STOKEN string
-
-	k  string
-	v  string
-	sv string
-
-	client *requester.HTTPClient
-}
-
-// NewUserInfo 检测BDUSS有效性, 同时获取百度详细信息
-// func (b *baiduAccount) Login() error {
-// 	if b.uid != 0 {
-// 		return errors.New("当前已经登录")
-// 	}
-
-// 	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
-// 	post := map[string]string{
-// 		"bdusstoken":  b.bduss + "|null",
-// 		"channel_id":  "",
-// 		"channel_uid": "",
-// 		"stErrorNums": "0",
-// 		"subapp_type": "mini",
-// 		"timestamp":   timestamp + "922",
-// 	}
-// 	ClientSignature(post)
-
-// 	header := map[string]string{
-// 		"Content-Type": "application/x-www-form-urlencoded",
-// 		"Cookie":       "ka=open",
-// 		"net":          "1",
-// 		"User-Agent":   "bdtb for Android 6.9.2.1",
-// 		"client_logid": timestamp + "416",
-// 		"Connection":   "Keep-Alive",
-// 	}
-
-// 	resp, err := b.client.Req("POST", "http://tieba.baidu.com/c/s/login", post, header) // 获取百度ID的UID，BDUSS等
-// 	if err != nil {
-// 		return fmt.Errorf("检测BDUSS有效性网络错误, %s", err)
-// 	}
-// 	defer resp.Body.Close()
-
-// 	json, err := simplejson.NewFromReader(resp.Body)
-// 	if err != nil {
-// 		return fmt.Errorf("检测BDUSS有效性json解析出错: %s", err)
-// 	}
-
-// 	errCode := json.Get("error_code").MustString()
-// 	errMsg := json.Get("error_msg").MustString()
-// 	if errCode != "0" {
-// 		return fmt.Errorf("检测BDUSS有效性错误代码: %s, 消息: %s", errCode, errMsg)
-// 	}
-
-// 	userJSON := json.Get("user")
-// 	uidStr := userJSON.Get("id").MustString()
-// 	b.uid, _ = strconv.ParseUint(uidStr, 10, 64)
-// 	b.name = userJSON.Get("name").MustString()
-
-// 	return nil
-// }
-
-func genThumbnails(vpath, gpath string) error {
-	os.MkdirAll(path.Dir(gpath), os.ModePerm)
-	// args := fmt.Sprintf(`-y -i %s -vframes 1 %s`, vpath, gpath)
-
-	msg, err := Cmd("ffmpeg", []string{"-y", "-i", vpath, "-vframes", "1", gpath})
-	if err != nil {
-		return fmt.Errorf("命令执行错误:%s message:%s", err, msg)
-	}
-
-	return nil
-}
-
-func cutVideoLength(vpath, cutPath string) error {
-	// ffmpeg -ss 00:03:00 -i video.mp4 -to 00:02:00 -c copy cut.mp4
-	msg, err := Cmd("ffmpeg", []string{"-y", "-ss", "00:00:00", "-i", vpath, "-to", "00:04:50", "-c", "copy", cutPath})
-	if err != nil {
-		return fmt.Errorf("命令执行错误:%s message:%s", err, msg)
-	}
-
-	return nil
-}
-
-func getVideoDuration(vpath string) (string, error) {
-	// args := fmt.Sprintf(`-v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 %s`, vpath)
-
-	msg, err := Cmd("ffprobe", []string{"-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", vpath})
-	if err != nil {
-		return "", fmt.Errorf("获取视频长度失败:%s message:%s", err, msg)
-	}
-	msg = strings.TrimSpace(msg)
-	for {
-		lastChracter := msg[len(msg)-1]
-		if string(lastChracter) == "0" {
-			msg = strings.TrimRight(msg, "0")
-			continue
-		}
-		break
-	}
-
-	return msg, nil
-}
-func Cmd(commandName string, params []string) (string, error) {
-	cmd := exec.Command(commandName, params...)
-	//fmt.Println("Cmd", cmd.Args)
-	var out, errbuf bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &errbuf
-	err := cmd.Start()
-	if err != nil {
-		return "", fmt.Errorf("命令执行错误:%s \n %s", err, errbuf.String())
-	}
-	err = cmd.Wait()
-	if err != nil {
-		return "", fmt.Errorf("命令执行错误:%s \n %s", err, errbuf.String())
-	}
-
-	return out.String(), nil
-}
-
-func (b *baiduAccount) Upload(filePath, desc string) error {
+func (b *BaiduClient) Upload(filePath, desc string) error {
 	// 生成缩略图
-	tsPath := fmt.Sprintf("./thumbsnails/%s/%s.jpg", b.name, path.Base(filePath))
+	tsPath := fmt.Sprintf("./thumbsnails/%s/%s.jpg", b.Nickname, path.Base(filePath))
 	err := genThumbnails(filePath, tsPath)
 	if err != nil {
 		return fmt.Errorf("缩略图生成失败:%s", err)
@@ -204,10 +64,10 @@ func (b *baiduAccount) Upload(filePath, desc string) error {
 }
 
 // 生成解密数据
-func (b *baiduAccount) FetchSecretInfo() error {
+func (b *BaiduClient) FetchSecretInfo() error {
 	resp, err := b.client.Req("GET", define.GetQuanminInfo, nil, nil) // 获取百度ID的UID，BDUSS等
 	if err != nil {
-		return fmt.Errorf("检测BDUSS有效性网络错误, %s", err)
+		return fmt.Errorf("请求全民用户数据失败, %s", err)
 	}
 	defer resp.Body.Close()
 
@@ -234,29 +94,12 @@ func (b *baiduAccount) FetchSecretInfo() error {
 	if err != nil {
 		return fmt.Errorf("获取用户加密sv信息失败")
 	}
-	b.name, _ = dataJ.Get("name").String()
+	b.Nickname, _ = dataJ.Get("name").String()
 
 	return nil
 }
 
-func Ase256(plaintext string, key string, iv string) string {
-	bKey := []byte(key)
-	bIV := []byte(iv)
-	bPlaintext := PKCS5Padding([]byte(plaintext), aes.BlockSize, len(plaintext))
-	block, _ := aes.NewCipher(bKey)
-	ciphertext := make([]byte, len(bPlaintext))
-	mode := cipher.NewCBCEncrypter(block, bIV)
-	mode.CryptBlocks(ciphertext, bPlaintext)
-	return base64.StdEncoding.EncodeToString(ciphertext)
-}
-
-func PKCS5Padding(ciphertext []byte, blockSize int, after int) []byte {
-	padding := (blockSize - len(ciphertext)%blockSize)
-	padtext := bytes.Repeat([]byte{byte(padding)}, padding)
-	return append(ciphertext, padtext...)
-}
-
-func (b *baiduAccount) streamUpload(filepath, thunbsnailpath, tv, desc string) error {
+func (b *BaiduClient) streamUpload(filepath, thunbsnailpath, tv, desc string) error {
 	// 请求空间
 	uploadID, mediaID, err := b.requestSpace()
 	if err != nil {
@@ -295,7 +138,7 @@ func (b *baiduAccount) streamUpload(filepath, thunbsnailpath, tv, desc string) e
 	return nil
 }
 
-func (b *baiduAccount) videoPublish(mediaID, tv, desc string) error {
+func (b *BaiduClient) videoPublish(mediaID, tv, desc string) error {
 	params := []struct {
 		Title             string `json:"title"`
 		PosterWidth       int    `json:"poster_width"`
@@ -335,7 +178,7 @@ func (b *baiduAccount) videoPublish(mediaID, tv, desc string) error {
 	return nil
 }
 
-func (b *baiduAccount) uploadPoster(thumbsnailpath string, uploadID, mediaID string) error {
+func (b *BaiduClient) uploadPoster(thumbsnailpath string, uploadID, mediaID string) error {
 	bodyBuf := bytes.NewBuffer(make([]byte, 0))
 	bodyWriter := multipart.NewWriter(bodyBuf)
 	defer bodyWriter.Close()
@@ -382,7 +225,7 @@ func (b *baiduAccount) uploadPoster(thumbsnailpath string, uploadID, mediaID str
 	return nil
 }
 
-func (b *baiduAccount) uploadFinished(tags []*ETag, uploadID, mediaID string) error {
+func (b *BaiduClient) uploadFinished(tags []*ETag, uploadID, mediaID string) error {
 	// [{"eTag":"c1be3d7e5884306312f3abec844f4156","partNumber":1}]
 	tagData, err := json.Marshal(tags)
 	if err != nil {
@@ -413,7 +256,7 @@ func (b *baiduAccount) uploadFinished(tags []*ETag, uploadID, mediaID string) er
 	return nil
 }
 
-func (b *baiduAccount) doUploadPart(data io.Reader, partNum int, mediaID, uploadID string) (string, error) {
+func (b *BaiduClient) doUploadPart(data io.Reader, partNum int, mediaID, uploadID string) (string, error) {
 	bodyBuf := bytes.NewBuffer(make([]byte, 0))
 	bodyWriter := multipart.NewWriter(bodyBuf)
 	defer bodyWriter.Close()
@@ -476,7 +319,7 @@ type ETag struct {
 	PartNumber int    `json:"partNumber"`
 }
 
-func (b *baiduAccount) uploadPart(filepath string, uploadID, mediaID string) ([]*ETag, error) {
+func (b *BaiduClient) uploadPart(filepath string, uploadID, mediaID string) ([]*ETag, error) {
 	bodyBuf := bytes.NewBuffer(make([]byte, 0))
 	bodyWriter := multipart.NewWriter(bodyBuf)
 	defer bodyWriter.Close()
@@ -516,7 +359,8 @@ func (b *baiduAccount) uploadPart(filepath string, uploadID, mediaID string) ([]
 	}
 
 }
-func (b *baiduAccount) requestSpace() (string, string, error) {
+func (b *BaiduClient) requestSpace() (string, string, error) {
+start:
 	resp, err := b.client.Req("POST", define.UploadSpace, nil, nil) // 获取百度ID的UID，BDUSS等
 	if err != nil {
 		return "", "", fmt.Errorf("请求失败, %s", err)
@@ -540,7 +384,12 @@ func (b *baiduAccount) requestSpace() (string, string, error) {
 		return "", "", fmt.Errorf("解析need_pop字段失败: %s", err)
 	}
 	if need_pop == 1 {
-		return "", "", fmt.Errorf("当前操作触发了旋转验证,请登录此号进行处理")
+		wlog.Infof("[%s]当前操作触发了旋转验证,将弹窗手动验证", b.Nickname)
+		if err := popCheack(b.BDUSS); err != nil {
+			return "", "", fmt.Errorf("手动处理转验证失败:%s", err)
+		}
+		wlog.Infof("[%s]验证完成", b.Nickname)
+		goto start
 	}
 	var uploadID, mediaID string
 	spaceArray, err := json.Get("data").Get("upload").Array()
@@ -556,28 +405,4 @@ func (b *baiduAccount) requestSpace() (string, string, error) {
 	}
 
 	return uploadID, mediaID, nil
-}
-
-func (b *baiduAccount) Name() string {
-	return b.name
-}
-
-func (b *baiduAccount) UID() uint64 {
-	return b.uid
-}
-
-func NewUser(bduss string) *baiduAccount {
-	b := &baiduAccount{
-		bduss:  bduss,
-		client: requester.NewHTTPClient(),
-	}
-	b.client.Jar.SetCookies(baiduComURL, []*http.Cookie{
-		{
-			Name:   "BDUSS",
-			Value:  bduss,
-			Domain: cookieDomain,
-		},
-	})
-
-	return b
 }

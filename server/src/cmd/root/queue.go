@@ -20,7 +20,7 @@ func (q *queueMsgHandler) HandleMessage(m *nsq.Message) error {
 	// do whatever actual message processing is desired
 	// err := processMessage(m.Body)
 	// 节点完成了某个视频的上传
-	finishedVideoID := &define.TaskFinished{}
+	finishedVideoID := &define.TaskUploadFinished{}
 	err := json.Unmarshal(m.Body, finishedVideoID)
 	if err != nil {
 		wlog.Errorf("队列事件解析失败:%s \n", err)

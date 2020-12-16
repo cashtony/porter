@@ -1,6 +1,7 @@
 package main
 
 import (
+	"porter/api"
 	"porter/define"
 	"porter/wlog"
 	"sync"
@@ -89,7 +90,7 @@ func UpdateDouyinUsers(utype UpdateType) {
 		traffic <- 1
 		go func(u *DouyinUser) {
 			// 获取最新一页视频
-			u.initSecID()
+			u.secUID = api.GetSecID(u.ShareURL)
 			wlog.Debugf("开始更新用户[%s][%s]数据: \n", u.UID, u.Nickname)
 			u.Update()
 

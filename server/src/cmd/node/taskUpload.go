@@ -2,28 +2,27 @@ package main
 
 import (
 	"encoding/json"
-	"porter/cmd/node/quanmin"
 	"porter/define"
 	"porter/wlog"
 
 	"github.com/nsqio/go-nsq"
 )
 
-var traffic = make(chan int, define.ParallelNum)
+var uploadTraffic = make(chan int, define.ParallelNum)
 
-type queueMsgHandler struct{}
+type TaskUploadHandler struct{}
 
-func (q *queueMsgHandler) HandleMessage(m *nsq.Message) error {
+func (q *TaskUploadHandler) HandleMessage(m *nsq.Message) error {
 	if len(m.Body) == 0 {
 		// Returning nil will automatically send a FIN command to NSQ to mark the message as processed.
 		// In this case, a message with an empty body is simply ignored/discarded.
 		return nil
 	}
-	traffic <- 1
+	uploadTraffic <- 1
 	// do whatever actual message processing is desired
 	// err := processMessage(m.Body)
 	// 接收root发布的任务
-	task := &define.Task{}
+	task := &define.TaskUpload{}
 	err := json.Unmarshal(m.Body, task)
 	if err != nil {
 		wlog.Error("任务解析失败:", err)
@@ -35,15 +34,15 @@ func (q *queueMsgHandler) HandleMessage(m *nsq.Message) error {
 	return nil
 }
 
-func excuteTask(task *define.Task) {
+func excuteTask(task *define.TaskUpload) {
 	wlog.Infof("用户[%s]接收到任务 数量:%d \n", task.Nickname, len(task.Videos))
 	if task.Bduss == "" {
 		wlog.Errorf("[%s] bduss为空 任务错误: \n", task.Nickname)
 		return
 	}
 
-	quanmin := quanmin.NewUser(task.Bduss)
-	if err := quanmin.FetchSecretInfo(); err != nil {
+	client := NewBaiduClient(task.Bduss)
+	if err := client.FetchSecretInfo(); err != nil {
 		wlog.Errorf("用户解密数据获取失败: %s", err)
 		return
 	}
@@ -59,7 +58,7 @@ func excuteTask(task *define.Task) {
 		}
 		wlog.Infof("[%s][%d][%s]下载结束,开始上传 \n", task.Nickname, i+1, v.Desc)
 
-		err = quanmin.Upload(filePath, v.Desc)
+		err = client.Upload(filePath, v.Desc)
 		if err != nil {
 			wlog.Errorf("[%s][%d][%s][%s]上传发生错误:%s \n", task.Nickname, vid, v.Desc, v.DownloadURL, err)
 			continue
@@ -69,7 +68,7 @@ func excuteTask(task *define.Task) {
 		finishedList = append(finishedList, v.AwemeID)
 
 		// 发送任务完成消息
-		data, err := json.Marshal(&define.TaskFinished{
+		data, err := json.Marshal(&define.TaskUploadFinished{
 			AwemeID: v.AwemeID,
 		})
 		if err != nil {
@@ -88,5 +87,5 @@ func excuteTask(task *define.Task) {
 
 	wlog.Infof("用户[%s]任务完成 \n", task.Nickname)
 
-	<-traffic
+	<-uploadTraffic
 }

@@ -41,9 +41,9 @@ func main() {
 	comsumer := queue.InitComsumer(define.TaskFinishedTopic, &queueMsgHandler{})
 	Q = queue.InitProducer()
 
-	// 定时器初始化, 每天早上8点开始进行用户视频的检测
+	// 定时器初始化, 每天固定时间开始进行用户视频的检测
 	c := cron.New()
-	c.AddFunc("0 8 * * *", DailyUpdate)
+	c.AddFunc("0 22 * * *", DailyUpdate)
 	go c.Run()
 
 	// gin初始化

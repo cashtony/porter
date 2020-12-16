@@ -39,10 +39,11 @@ func main() {
 	lines := strings.Split(string(content), "\n")
 	items := make([]*Item, 0)
 
-	for _, one := range lines {
+	for index, one := range lines {
 		if one == "" {
 			continue
 		}
+
 		i := &Item{}
 
 		segments := strings.Split(one, "----")
@@ -63,13 +64,25 @@ func main() {
 			fmt.Printf("这一行没有找到bduss,将会跳过:\n [%s] \n", one)
 			continue
 		}
+
 		bdussIndex += len("BDUSS=")
+
+		if bdussIndex+192 > len(orther) {
+			fmt.Printf("警告: 第[%d]行 bduss错误 \n", index+1)
+			continue
+		}
+
 		i.BDUSS = orther[bdussIndex : bdussIndex+192]
 
 		items = append(items, i)
 	}
 
 	writeXLSX(items)
+
+	fmt.Println("按回车键退出")
+
+	b := make([]byte, 1)
+	os.Stdin.Read(b)
 }
 
 func writeXLSX(items []*Item) {

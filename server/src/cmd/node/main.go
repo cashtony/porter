@@ -2,12 +2,14 @@ package main
 
 import (
 	"flag"
+	"math/rand"
 	"os"
 	"os/signal"
 	"porter/define"
 	"porter/queue"
 	"porter/wlog"
 	"syscall"
+	"time"
 
 	"github.com/nsqio/go-nsq"
 	"gorm.io/gorm"
@@ -21,6 +23,7 @@ var DB *gorm.DB
 var Q *nsq.Producer
 
 func main() {
+	rand.Seed(time.Now().Unix())
 	flag.Parse()
 
 	if *Mode == "debug" {
@@ -28,24 +31,16 @@ func main() {
 	}
 
 	// 从消息队列中获取任务
-	comsumer := queue.InitComsumer(define.TaskPushTopic, &queueMsgHandler{})
+	uploadComsumer := queue.InitComsumer(define.TaskPushTopic, &TaskUploadHandler{})
+	changeInfoComsumer := queue.InitComsumer(define.TaskPushTopic, &TaskUploadHandler{})
 	Q = queue.InitProducer()
 
 	wlog.Info("等待新任务中...")
-
-	// quanmin := quanmin.NewUser("0yUjhJQnlEQjZHRmJOQ2dtbmtoRn5xWHo4a3JlMEtieFhRdndIOWV3MVV2ZWxmRVFBQUFBJCQAAAAAAAAAAAEAAABDV7QWeG4xMjEzMDAxOAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFQwwl9UMMJfRE")
-	// if err := quanmin.FetchSecretInfo(); err != nil {
-	// 	wlog.Errorf("用户解密数据获取失败: %s", err)
-	// 	return
-	// }
-	// err := quanmin.Upload2("D:/work/porter/server/src/temp/何飞飞剪辑/你这是骗我们做代驾？.mp4", "这电影好看!")
-	// if err != nil {
-	// 	wlog.Error("上传错误:", err)
-	// }
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 	<-sigChan
 
-	comsumer.Stop()
+	uploadComsumer.Stop()
+	changeInfoComsumer.Stop()
 }

@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/json"
 	"net/http"
+	"porter/api"
 	"porter/define"
 	"porter/wlog"
 	"strings"
@@ -48,7 +50,7 @@ func BindAdd(c *gin.Context) {
 			baiduErr = true
 			failRecords = append(failRecords, bduss)
 		}
-		dy, err := NewDouYinUser(douyinShare)
+		apiDouyinUser, err := api.NewAPIDouyinUser(douyinShare)
 		if err != nil {
 			wlog.Error("抖音用户解析失败", douyinShare, err)
 			douyinErr = true
@@ -61,14 +63,22 @@ func BindAdd(c *gin.Context) {
 			faildNum++
 			continue
 		}
-		wlog.Debugf("开始绑定%s %s \n", bd.Nickname, dy.Nickname)
-		bd.DouyinUID = dy.UID
+		wlog.Debugf("开始绑定%s %s \n", bd.Nickname, apiDouyinUser.Nickname)
+		bd.DouyinURL = douyinShare
 
+		tableDouyinUser := &DouyinUser{
+			UID:        apiDouyinUser.UID,
+			UniqueUID:  apiDouyinUser.UniqueUID,
+			Nickname:   apiDouyinUser.Nickname,
+			ShareURL:   douyinShare,
+			VideoCount: apiDouyinUser.AwemeCount,
+			FansCount:  apiDouyinUser.FollowerCount,
+		}
 		bd.Store()
-		dy.Store()
+		tableDouyinUser.Store()
 
 		go func() {
-			dy.initVideoList()
+			tableDouyinUser.initVideoList()
 			bd.UploadVideo(UpdateTypeDaily)
 		}()
 
@@ -186,9 +196,6 @@ func ReloadUserVideoList(c *gin.Context) {
 		return
 	}
 
-	dy, _ := NewDouYinUser(param.ShareURL)
-	go dy.initVideoList()
-
 	c.JSON(http.StatusOK, gin.H{
 		"code": define.Success,
 	})
@@ -288,4 +295,48 @@ func GetStatistic(c *gin.Context) {
 		"list":     list,
 		"totalNum": totalNum,
 	})
+}
+
+func SyncBaiduUser(c *gin.Context) {
+	param := &struct {
+		Content string `json:"content"`
+	}{}
+
+	err := c.BindJSON(param)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": define.ParamErr})
+		return
+	}
+
+	if param.Content == "" {
+		c.JSON(http.StatusOK, gin.H{"code": define.ParamErr})
+	}
+
+	items := strings.Split(param.Content, "\r\n")
+	list := make([]define.TaskChangeInfoItem, 0)
+
+	for _, value := range items {
+		value = strings.TrimSpace(value)
+		item := strings.Split(value, "|")
+
+		if len(item) == 2 {
+			list = append(list, define.TaskChangeInfoItem{
+				Bduss:     item[0],
+				DouyinURL: item[1],
+			})
+		}
+	}
+
+	data, err := json.Marshal(&define.TaskChangeInfo{
+		List: list,
+	})
+	if err != nil {
+		wlog.Error("task解析成json错误", err)
+		return
+	}
+
+	err = Q.Publish(define.TaskChangeInfoTopic, data)
+	if err != nil {
+		wlog.Error("任务发布失败:", err)
+	}
 }

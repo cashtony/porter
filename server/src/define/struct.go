@@ -5,21 +5,29 @@ import (
 	"time"
 )
 
-type Task struct {
+type TaskUpload struct {
 	Bduss    string
 	Nickname string
-	Videos   []*TaskVideo
+	Videos   []*TaskUploadVideo
 }
-type TaskVideo struct {
+type TaskUploadVideo struct {
 	AwemeID     string
 	Desc        string
 	DownloadURL string
 }
 
-type TaskFinished struct {
+type TaskUploadFinished struct {
 	AwemeID string
 }
 
+type TaskChangeInfo struct {
+	List []TaskChangeInfoItem
+}
+
+type TaskChangeInfoItem struct {
+	Bduss     string
+	DouyinURL string
+}
 type JsonTime time.Time
 
 // MarshalJSON 实现它的json序列化方法
