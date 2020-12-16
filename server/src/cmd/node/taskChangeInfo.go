@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"porter/define"
 	"porter/wlog"
 
@@ -13,14 +14,18 @@ type TaskChangeInfoHandler struct{}
 
 func (t *TaskChangeInfoHandler) HandleMessage(m *nsq.Message) error {
 	if len(m.Body) == 0 {
-		// Returning nil will automatically send a FIN command to NSQ to mark the message as processed.
-		// In this case, a message with an empty body is simply ignored/discarded.
 		return nil
 	}
-	// do whatever actual message processing is desired
-	// err := processMessage(m.Body)
-	// 接收root发布的任务
+
 	task := &define.TaskChangeInfo{}
+	err := json.Unmarshal(m.Body, task)
+	if err != nil {
+		wlog.Error("任务解析失败:", err)
+		return nil
+	}
+
+	wlog.Infof("接收到复制信息任务, 数量:%d", len(task.List))
+
 	for _, item := range task.List {
 		client := NewBaiduClient(item.Bduss)
 		err := client.SyncFromDouyin(item.DouyinURL)
@@ -29,6 +34,6 @@ func (t *TaskChangeInfoHandler) HandleMessage(m *nsq.Message) error {
 			continue
 		}
 	}
-	// Returning a non-nil error will automatically send a REQ command to NSQ to re-queue the message.
+
 	return nil
 }

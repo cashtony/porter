@@ -68,6 +68,12 @@ export const constantRoutes = [
         meta: { title: '批量增加' }
       },
       {
+        path: '/baidu/sync',
+        name: '复制抖音用户数据',
+        component: () => import('@/views/userManager/batchSync/index'),
+        meta: { title: '复制抖音用户' }
+      },
+      {
         path: '/douyin',
         name: '抖音用户',
         component: () => import('@/views/userManager/douyinUser/index'),

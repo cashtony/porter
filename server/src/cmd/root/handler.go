@@ -317,7 +317,7 @@ func SyncBaiduUser(c *gin.Context) {
 
 	for _, value := range items {
 		value = strings.TrimSpace(value)
-		item := strings.Split(value, "|")
+		item := strings.Split(value, "\t")
 
 		if len(item) == 2 {
 			list = append(list, define.TaskChangeInfoItem{
@@ -339,4 +339,6 @@ func SyncBaiduUser(c *gin.Context) {
 	if err != nil {
 		wlog.Error("任务发布失败:", err)
 	}
+
+	c.JSON(http.StatusOK, gin.H{"code": define.Success})
 }

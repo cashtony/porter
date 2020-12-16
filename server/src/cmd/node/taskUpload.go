@@ -49,21 +49,22 @@ func excuteTask(task *define.TaskUpload) {
 	finishedList := make([]string, 0)
 	for i, v := range task.Videos {
 		vid := i + 1
-		wlog.Infof("[%s][%d][%s]开始下载 \n", task.Nickname, i+1, v.Desc)
+		filterDesc := fileterKeyWord(v.Desc)
+		wlog.Infof("[%s][%d][%s]开始下载 \n", task.Nickname, i+1, filterDesc)
 		// 下载视频
-		filePath, err := download(task.Nickname, v.Desc, v.DownloadURL)
+		filePath, err := download(task.Nickname, filterDesc, v.DownloadURL)
 		if err != nil {
-			wlog.Errorf("[%s][%d][%s][%s]下载发生错误:%s \n", task.Nickname, vid, v.Desc, v.DownloadURL, err)
+			wlog.Errorf("[%s][%d][%s][%s]下载发生错误:%s \n", task.Nickname, vid, filterDesc, v.DownloadURL, err)
 			continue
 		}
-		wlog.Infof("[%s][%d][%s]下载结束,开始上传 \n", task.Nickname, i+1, v.Desc)
+		wlog.Infof("[%s][%d][%s]下载结束,开始上传 \n", task.Nickname, i+1, filterDesc)
 
-		err = client.Upload(filePath, v.Desc)
+		err = client.Upload(filePath, filterDesc)
 		if err != nil {
-			wlog.Errorf("[%s][%d][%s][%s]上传发生错误:%s \n", task.Nickname, vid, v.Desc, v.DownloadURL, err)
+			wlog.Errorf("[%s][%d][%s][%s]上传发生错误:%s \n", task.Nickname, vid, filterDesc, v.DownloadURL, err)
 			continue
 		}
-		wlog.Infof("[%s][%d][%s]上传完毕 \n", task.Nickname, vid, v.Desc)
+		wlog.Infof("[%s][%d][%s]上传完毕 \n", task.Nickname, vid, filterDesc)
 
 		finishedList = append(finishedList, v.AwemeID)
 

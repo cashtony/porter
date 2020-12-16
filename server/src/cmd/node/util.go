@@ -26,13 +26,13 @@ import (
 func ReadFileData(path string) string {
 	f, err := os.Open(path)
 	if err != nil {
-		wlog.Fatal("读取文件失败, 请检查", err)
+		wlog.Error("读取文件失败, 请检查", err)
 	}
 	defer f.Close()
 
 	fd, err := ioutil.ReadAll(f)
 	if err != nil {
-		wlog.Fatal("读取文件内容失败, 请检查", err)
+		wlog.Error("读取文件内容失败, 请检查", err)
 	}
 
 	return string(fd)

@@ -61,3 +61,10 @@ export function getStatistic(data) {
     data
   })
 }
+export function syncUser(data) {
+  return request({
+    url: '/baidu/user/sync',
+    method: 'post',
+    data
+  })
+}

@@ -73,17 +73,25 @@ func (b *BaiduClient) SyncFromDouyin(shareURL string) error {
 		return fmt.Errorf("获取抖音用户数据失败:%s", err)
 	}
 
+	wlog.Infof("开始从抖音用户[%s]复制用户信息 \n", apiDouyinUser.Nickname)
+
 	headImgURL := apiDouyinUser.AvatarMedium.URLList[0]
 	// 更换头像
 	if err := b.Setportrait(headImgURL); err != nil {
 		wlog.Infof("[%s]更换头像失败: %s \n", apiDouyinUser.Nickname, err)
+	} else {
+		wlog.Infof("抖音用户[%s]头像更换成功 \n", apiDouyinUser.Nickname)
 	}
+
 	// 昵称和签名关键字过滤后进行更换
+	newName := fileterKeyWord(addExtraName(apiDouyinUser.Nickname))
 	err = b.SetProfile(map[string]string{
-		"nickname": fileterKeyWord(addExtraName(apiDouyinUser.Nickname)),
+		"nickname": newName,
 	})
 	if err != nil {
 		wlog.Infof("[%s]更换昵称失败: %s \n", apiDouyinUser.Nickname, err)
+	} else {
+		wlog.Infof("抖音用户[%s]昵称更换为[%s]成功 \n", apiDouyinUser.Nickname, newName)
 	}
 
 	err = b.SetProfile(map[string]string{
@@ -91,7 +99,11 @@ func (b *BaiduClient) SyncFromDouyin(shareURL string) error {
 	})
 	if err != nil {
 		wlog.Infof("[%s]更换签名失败:%s \n", apiDouyinUser.Nickname, err)
+	} else {
+		wlog.Infof("抖音用户[%s]签名更换成功 \n", apiDouyinUser.Nickname)
 	}
+
+	wlog.Infof("抖音用户[%s]信息复制完毕 \n", apiDouyinUser.Nickname)
 
 	return nil
 }
@@ -110,12 +122,12 @@ func addExtraName(name string) string {
 
 	randIndex := rand.Intn(len(nameList) - 1)
 
-	begin := rand.Intn(100) % 2
-	if begin == 0 {
-		newName = nameList[randIndex] + name
-	} else {
-		newName = name + nameList[randIndex]
-	}
+	// begin := rand.Intn(100) % 2
+	// if begin == 0 {
+	// newName = nameList[randIndex] + name
+	// } else {
+	newName = name + nameList[randIndex]
+	// }
 
 	return newName
 }
@@ -264,7 +276,6 @@ func (b *BaiduClient) SetProfile(args map[string]string) error {
 		return err
 	}
 
-	wlog.Info("body:", string(body))
 	result := &struct {
 		Timestamp         int    `json:"timestamp"`
 		Logid             string `json:"logid"`
@@ -284,7 +295,6 @@ func (b *BaiduClient) SetProfile(args map[string]string) error {
 		return errors.New(result.Userprofilesubmit.Msg)
 	}
 
-	wlog.Info("修改成功")
 	return nil
 }
 

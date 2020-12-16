@@ -60,20 +60,11 @@ func main() {
 	g.POST("/baidu/user/edit", BaiduUserEdit)
 	g.POST("/baidu/user/update", BaiduUserUpdate)
 	g.POST("/bind/add", BindAdd)
-
+	g.POST("/baidu/user/sync", SyncBaiduUser)
 	g.POST("/statistic", GetStatistic)
 
 	g.POST("/manage/manuallyDailyUpdate", ManuallyDailyUpdate)
 	g.POST("/manage/manuallyNewlyUpdate", ManuallyNewVideoUpdate)
-
-	// b, err := NewBaiduUser("NaV28xMlhWZWh-MmlaMjFZek9JNHB4S0trQUU5dXZDU3o3OFJITXB3ZVpZVVJmSVFBQUFBJCQAAAAAAAAAAAEAAABG-YPFwLO62dHXdGpqAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAJnUHF-Z1BxfOX")
-	// if err != nil {
-	// 	wlog.Error("err:", err)
-
-	// }
-	// b.DouyinUID = "2453734984792068"
-	// vlist, _ := b.olderVideoList(20)
-	// b.doUpload(vlist)
 
 	g.Run(*Host)
 

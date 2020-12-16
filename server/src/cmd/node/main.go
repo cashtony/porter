@@ -32,7 +32,7 @@ func main() {
 
 	// 从消息队列中获取任务
 	uploadComsumer := queue.InitComsumer(define.TaskPushTopic, &TaskUploadHandler{})
-	changeInfoComsumer := queue.InitComsumer(define.TaskPushTopic, &TaskUploadHandler{})
+	changeInfoComsumer := queue.InitComsumer(define.TaskChangeInfoTopic, &TaskChangeInfoHandler{})
 	Q = queue.InitProducer()
 
 	wlog.Info("等待新任务中...")

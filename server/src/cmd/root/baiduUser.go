@@ -8,7 +8,6 @@ import (
 	"porter/define"
 	"porter/requester"
 	"porter/wlog"
-	"regexp"
 	"time"
 
 	"github.com/bitly/go-simplejson"
@@ -144,8 +143,6 @@ func (b *BaiduUser) fetcBaseInfo() error {
 	return nil
 }
 
-var uploadDescReg, _ = regexp.Compile(`(抖音|dou|DOU)`)
-
 func (b *BaiduUser) getVideoList(num int, mode GetMode) ([]*DouyinVideo, error) {
 	page, limit := 1, 20
 
@@ -219,7 +216,7 @@ func (b *BaiduUser) pulishTask(uploadVideoList []*DouyinVideo) {
 	for _, v := range uploadVideoList {
 		taskVideoList = append(taskVideoList, &define.TaskUploadVideo{
 			AwemeID:     v.AwemeID,
-			Desc:        uploadDescReg.ReplaceAllString(v.Desc, ""),
+			Desc:        v.Desc,
 			DownloadURL: fmt.Sprintf("%s/?video_id=%s&ratio=720p&line=0", define.GetVideoDownload, v.VID),
 		})
 
