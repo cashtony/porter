@@ -55,7 +55,7 @@ func (b *BaiduUser) fetchQuanminInfo() error {
 
 	quanminResp, err := requester.DefaultClient.Do(quanminReq)
 	if err != nil {
-		return fmt.Errorf("获取百度账号的基本信息出错: %s", err)
+		return fmt.Errorf("获取全民账号的基本信息出错: %s", err)
 	}
 	defer quanminResp.Body.Close()
 
@@ -149,9 +149,9 @@ func (b *BaiduUser) getVideoList(num int, mode GetMode) ([]*DouyinVideo, error) 
 	videoList := make([]*DouyinVideo, 0)
 	for {
 		tmpList := make([]*DouyinVideo, 0)
-		subDB := DB.Model(&DouyinVideo{}).Where("share_url = ? and state = ?", b.DouyinURL, WaitUpload).Order("create_time desc")
+		subDB := DB.Model(&DouyinVideo{}).Where("douyin_url = ? and state = ?", b.DouyinURL, WaitUpload).Order("create_time desc")
 		if mode == GetModeNewly {
-			subDB.Where(" date(create_time) >= current_date - 1")
+			subDB.Where("date(create_time) >= current_date - 1")
 		}
 		subDB.Offset((page - 1) * limit).Limit(limit).Find(&tmpList)
 		if subDB.Error != nil {
@@ -187,7 +187,7 @@ func (b *BaiduUser) UploadVideo(utype UpdateType) {
 	num := rand.Intn(MaxUploadNum-MinUploadNum) + MinUploadNum
 	uploadVideoList, err := b.getVideoList(num, GetModeNewly)
 	if err != nil {
-		wlog.Errorf("从数据库中获取用户[%s][%s]最新视频列表信息失败:%s \n", b.UID, b.Nickname, DB.Error)
+		wlog.Errorf("从数据库中获取用户[%s][%s]最新视频列表信息失败:%s \n", b.UID, b.Nickname, err)
 		return
 	}
 
@@ -195,7 +195,7 @@ func (b *BaiduUser) UploadVideo(utype UpdateType) {
 		wlog.Infof("用户[%s][%s]绑定的抖音号昨天没有更新,将获取以前的视频 \n", b.UID, b.Nickname)
 		uploadVideoList, err = b.getVideoList(num, GetModeOlder)
 		if err != nil {
-			wlog.Errorf("从数据库中获取用户[%s][%s]视频列表信息失败:%s \n", b.UID, b.Nickname, DB.Error)
+			wlog.Errorf("从数据库中获取用户[%s][%s]视频列表信息失败:%s \n", b.UID, b.Nickname, err)
 			return
 		}
 	}

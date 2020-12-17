@@ -64,7 +64,7 @@ func (u *DouyinUser) OnePageVideo(cursor int64) ([]*DouyinVideo, bool, int64, er
 	for {
 		time.Sleep(100 * time.Millisecond)
 		if tryTimes > 500 {
-			wlog.Infof("[警告]获取视频列表尝试超过%d次仍然没有获得数据 \n", tryTimes)
+			wlog.Infof("[警告]获取视频列表尝试超过%d次仍然没有获得数据", tryTimes)
 			tryTimes = 0
 		}
 
@@ -90,9 +90,8 @@ func (u *DouyinUser) OnePageVideo(cursor int64) ([]*DouyinVideo, bool, int64, er
 
 		for _, item := range j.Get("aweme_list").MustArray() {
 			itemJSON := item.(map[string]interface{})
-			authorInfo := itemJSON["author"].(map[string]interface{})
 			video := &DouyinVideo{
-				AuthorUID: authorInfo["uid"].(string),
+				DouyinURL: u.ShareURL,
 				AwemeID:   itemJSON["aweme_id"].(string),
 				Desc:      itemJSON["desc"].(string),
 			}
@@ -148,6 +147,10 @@ func (d *DouyinUser) StoreVideo(list []*DouyinVideo) {
 }
 
 func (d *DouyinUser) Update() {
+	if d.secUID == "" {
+		wlog.Errorf("用户[%s][%s]secUID为空:%s \n", d.UID, d.Nickname)
+		return
+	}
 	onePageList, _, _, err := d.OnePageVideo(0)
 	if err != nil {
 		wlog.Errorf("用户[%s][%s]获取视频列表失败:%s \n", d.UID, d.Nickname, err)

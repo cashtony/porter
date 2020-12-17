@@ -91,7 +91,7 @@ func UpdateDouyinUsers(utype UpdateType) {
 		go func(u *DouyinUser) {
 			// 获取最新一页视频
 			u.secUID = api.GetSecID(u.ShareURL)
-			wlog.Debugf("开始更新用户[%s][%s]数据: \n", u.UID, u.Nickname)
+			wlog.Debugf("开始更新用户[%s][%s]数据:", u.UID, u.Nickname)
 			u.Update()
 
 			wg.Done()
@@ -117,7 +117,7 @@ func BaiduUsersUpload(uType UpdateType) {
 	traffic := make(chan int, define.ParallelNum)
 	// 开始上传视频
 	bdUsers := make([]*BaiduUser, 0)
-	subDB := DB.Model(&BaiduUser{}).Where("douyin_uid != ''")
+	subDB := DB.Model(&BaiduUser{}).Where("douyin_url != ''")
 	if uType == UpdateTypeDaily {
 		subDB = subDB.Where("last_upload_time < current_date")
 	}

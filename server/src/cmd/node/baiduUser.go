@@ -20,6 +20,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/go-errors/errors"
 )
@@ -80,30 +81,30 @@ func (b *BaiduClient) SyncFromDouyin(shareURL string) error {
 	if err := b.Setportrait(headImgURL); err != nil {
 		wlog.Infof("[%s]更换头像失败: %s \n", apiDouyinUser.Nickname, err)
 	} else {
-		wlog.Infof("抖音用户[%s]头像更换成功 \n", apiDouyinUser.Nickname)
+		wlog.Infof("[%s]头像更换成功 \n", apiDouyinUser.Nickname)
 	}
 
 	// 昵称和签名关键字过滤后进行更换
-	newName := fileterKeyWord(addExtraName(apiDouyinUser.Nickname))
+	newName := fileterKeyWord(addExtraName(filterSpecial(apiDouyinUser.Nickname)))
 	err = b.SetProfile(map[string]string{
 		"nickname": newName,
 	})
 	if err != nil {
 		wlog.Infof("[%s]更换昵称失败: %s \n", apiDouyinUser.Nickname, err)
 	} else {
-		wlog.Infof("抖音用户[%s]昵称更换为[%s]成功 \n", apiDouyinUser.Nickname, newName)
+		wlog.Infof("[%s]昵称更换为[%s]成功 \n", apiDouyinUser.Nickname, newName)
 	}
 
 	err = b.SetProfile(map[string]string{
-		"autograph": fileterKeyWord(apiDouyinUser.Signature),
+		"autograph": fileterKeyWord(filterSpecial(apiDouyinUser.Signature)),
 	})
 	if err != nil {
 		wlog.Infof("[%s]更换签名失败:%s \n", apiDouyinUser.Nickname, err)
 	} else {
-		wlog.Infof("抖音用户[%s]签名更换成功 \n", apiDouyinUser.Nickname)
+		wlog.Infof("[%s]签名更换成功 \n", apiDouyinUser.Nickname)
 	}
 
-	wlog.Infof("抖音用户[%s]信息复制完毕 \n", apiDouyinUser.Nickname)
+	wlog.Infof("[%s]信息复制完毕 \n", apiDouyinUser.Nickname)
 
 	return nil
 }
@@ -115,6 +116,19 @@ func fileterKeyWord(content string) string {
 	}
 
 	return newstr
+}
+
+// 过滤掉特殊字符
+func filterSpecial(content string) string {
+	var buffer bytes.Buffer
+	for _, v := range content {
+		if unicode.Is(unicode.Han, v) || unicode.IsLetter(v) || unicode.IsDigit(v) || unicode.IsPunct(v) {
+			buffer.WriteRune(v)
+			continue
+		}
+	}
+
+	return buffer.String()
 }
 
 func addExtraName(name string) string {

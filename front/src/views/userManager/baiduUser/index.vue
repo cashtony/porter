@@ -67,12 +67,12 @@
         </template>
       </el-table-column>
       <el-table-column
-        label="抖音绑定"
+        label="抖音链接"
         width="150"
         align="center"
       >
         <template slot-scope="scope">
-          <span>{{ scope.row.douyinUID }}</span>
+          <span>{{ scope.row.douyinURL }}</span>
         </template>
       </el-table-column>
       <el-table-column
@@ -124,8 +124,8 @@
             :disabled="true"
           />
         </el-form-item>
-        <el-form-item label="绑定的抖音号">
-          <el-input v-model="dialogForm.douyinUID" />
+        <el-form-item label="抖音链接">
+          <el-input v-model="dialogForm.douyinURL" />
         </el-form-item>
       </el-form>
       <div
@@ -164,7 +164,7 @@ export default {
         uid: '',
         userName: '',
         nickName: '',
-        douyinUID: ''
+        douyinURL: ''
       },
       dialogStatusMap: { update: '修改数据', create: '新增抖音用户' },
       dialogFormVisible: false,
@@ -191,7 +191,7 @@ export default {
         uid: '',
         userName: '',
         nickName: '',
-        douyinUID: ''
+        douyinURL: ''
       }
     },
     onEdit(row) {

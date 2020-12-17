@@ -4,7 +4,7 @@ import "time"
 
 type DouyinVideo struct {
 	AwemeID    string `gorm:"primaryKey"`
-	AuthorUID  string // 抖音uid
+	DouyinURL  string // 抖音分享url
 	Desc       string // 视频描述
 	VID        string // 用于下载时填充链接
 	CreateTime time.Time

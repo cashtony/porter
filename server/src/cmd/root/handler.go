@@ -204,7 +204,7 @@ func ReloadUserVideoList(c *gin.Context) {
 func BaiduUserEdit(c *gin.Context) {
 	param := &struct {
 		UID       string `json:"uid"`
-		DouyinUID string `json:"douyinUID"`
+		DouyinURL string `json:"douyinURL"`
 	}{}
 
 	err := c.BindJSON(param)
@@ -213,7 +213,7 @@ func BaiduUserEdit(c *gin.Context) {
 		return
 	}
 
-	result := DB.Model(&BaiduUser{}).Where("uid = ?", param.UID).Update("douyin_uid", param.DouyinUID)
+	result := DB.Model(&BaiduUser{}).Where("uid = ?", param.UID).Update("douyin_url", param.DouyinURL)
 	if result.Error != nil {
 		c.JSON(http.StatusOK, gin.H{"code": define.CannotBind})
 		return
