@@ -8,19 +8,14 @@ import (
 	"github.com/nsqio/go-nsq"
 )
 
-var uploadTraffic = make(chan int, define.ParallelNum)
-
 type TaskUploadHandler struct{}
 
 func (q *TaskUploadHandler) HandleMessage(m *nsq.Message) error {
 	if len(m.Body) == 0 {
-		// Returning nil will automatically send a FIN command to NSQ to mark the message as processed.
-		// In this case, a message with an empty body is simply ignored/discarded.
 		return nil
 	}
-	uploadTraffic <- 1
-	// do whatever actual message processing is desired
-	// err := processMessage(m.Body)
+
+	ThreadTraffic <- 1
 	// 接收root发布的任务
 	task := &define.TaskUpload{}
 	err := json.Unmarshal(m.Body, task)
@@ -30,7 +25,6 @@ func (q *TaskUploadHandler) HandleMessage(m *nsq.Message) error {
 	}
 	go excuteTask(task)
 
-	// Returning a non-nil error will automatically send a REQ command to NSQ to re-queue the message.
 	return nil
 }
 
@@ -47,6 +41,8 @@ func excuteTask(task *define.TaskUpload) {
 		return
 	}
 	finishedList := make([]string, 0)
+	sucNum := 0
+
 	for i, v := range task.Videos {
 		vid := i + 1
 		filterDesc := fileterKeyWord(v.Desc)
@@ -82,11 +78,13 @@ func excuteTask(task *define.TaskUpload) {
 			wlog.Errorf("上传完成事件发布失败:%s", err)
 			continue
 		}
+
+		sucNum++
 	}
 
 	deleteUserDir(task.Nickname)
 
-	wlog.Infof("用户[%s]任务完成 \n", task.Nickname)
+	wlog.Infof("用户[%s]任务完成, 成功[%d]条, 失败[%d]条 \n", task.Nickname, sucNum, len(task.Videos)-sucNum)
 
-	<-uploadTraffic
+	<-ThreadTraffic
 }

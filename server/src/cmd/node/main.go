@@ -17,14 +17,17 @@ import (
 
 var Mode = flag.String("mode", "debug", "运行模式 debug:开发模式, release:产品模式")
 var Host = flag.String("host", ":1213", "指定主机地址")
-var bduss = flag.String("bduss", "", "百度BDUSS")
-var dyuid = flag.String("uid", "", "抖音uid")
+var Thread = flag.Int("thread", 16, "同时运行任务数量")
+var ThreadTraffic chan int
+
 var DB *gorm.DB
 var Q *nsq.Producer
 
 func main() {
 	rand.Seed(time.Now().Unix())
 	flag.Parse()
+
+	ThreadTraffic = make(chan int, *Thread)
 
 	if *Mode == "debug" {
 		wlog.DevelopMode()
@@ -34,7 +37,7 @@ func main() {
 	uploadComsumer := queue.InitComsumer(define.TaskPushTopic, &TaskUploadHandler{})
 	changeInfoComsumer := queue.InitComsumer(define.TaskChangeInfoTopic, &TaskChangeInfoHandler{})
 	Q = queue.InitProducer()
-
+	wlog.Info("当前设定Thread数量为:", *Thread)
 	wlog.Info("等待新任务中...")
 
 	sigChan := make(chan os.Signal, 1)

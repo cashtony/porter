@@ -2,7 +2,6 @@ package main
 
 import (
 	"porter/api"
-	"porter/define"
 	"porter/wlog"
 	"sync"
 )
@@ -65,7 +64,6 @@ func UpdateDouyinUsers(utype UpdateType) {
 			wlog.Error("任务panic", r)
 		}
 	}()
-	traffic := make(chan int, define.ParallelNum)
 	wg := sync.WaitGroup{}
 
 	users := make([]*DouyinUser, 0)
@@ -87,7 +85,7 @@ func UpdateDouyinUsers(utype UpdateType) {
 	wg.Add(len(users))
 
 	for _, user := range users {
-		traffic <- 1
+		ThreadTraffic <- 1
 		go func(u *DouyinUser) {
 			// 获取最新一页视频
 			u.secUID = api.GetSecID(u.ShareURL)
@@ -95,7 +93,7 @@ func UpdateDouyinUsers(utype UpdateType) {
 			u.Update()
 
 			wg.Done()
-			<-traffic
+			<-ThreadTraffic
 		}(user)
 
 	}
@@ -114,7 +112,7 @@ func BaiduUsersUpload(uType UpdateType) {
 		}
 	}()
 	wg := sync.WaitGroup{}
-	traffic := make(chan int, define.ParallelNum)
+
 	// 开始上传视频
 	bdUsers := make([]*BaiduUser, 0)
 	subDB := DB.Model(&BaiduUser{}).Where("douyin_url != ''")
@@ -130,49 +128,15 @@ func BaiduUsersUpload(uType UpdateType) {
 	wg.Add(len(bdUsers))
 
 	for _, bduser := range bdUsers {
-		traffic <- 1
+		ThreadTraffic <- 1
 
 		go func(u *BaiduUser) {
 			u.UploadVideo(uType)
 
 			wg.Done()
-			<-traffic
+			<-ThreadTraffic
 		}(bduser)
 	}
 
 	wg.Wait()
 }
-
-// func NewlyBaiduUsersUpload() {
-// 	defer func() {
-// 		if r := recover(); r != nil {
-// 			wlog.Error("任务panic", r)
-// 		}
-// 	}()
-// 	wg := sync.WaitGroup{}
-// 	traffic := make(chan int, define.ParallelNum)
-// 	// 开始上传视频
-// 	bdUsers := make([]*BaiduUser, 0)
-// 	result := DB.Model(&BaiduUser{}).Where("douyin_uid != ''").Find(&bdUsers)
-// 	if result.Error != nil {
-// 		wlog.Error("定时任务获取百度用户时发生错误:", result.Error)
-// 		return
-// 	}
-// 	wlog.Info("开始上传: 本次要上传的用户数量为:", len(bdUsers))
-// 	wg.Add(len(bdUsers))
-
-// 	for _, bduser := range bdUsers {
-// 		traffic <- 1
-
-// 		go func(u *BaiduUser) {
-// 			u.UploadVideo(UpdateTypeNewly)
-
-// 			wg.Done()
-// 			<-traffic
-// 		}(bduser)
-// 	}
-
-// 	wg.Wait()
-
-// 	wlog.Info("本次只更新最新视频完成")
-// }

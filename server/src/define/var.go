@@ -1,5 +1,3 @@
 package define
 
-var (
-	ParallelNum = 16
-)
+var ()

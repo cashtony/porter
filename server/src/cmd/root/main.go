@@ -17,12 +17,16 @@ import (
 
 var Mode = flag.String("mode", "release", "运行模式 debug:开发模式, release:产品模式")
 var Host = flag.String("host", ":5000", "指定的地址")
+var Thread = flag.Int("thread", 16, "同时运行任务数量")
+var ThreadTraffic chan int
+
 var DB *gorm.DB
 var Q *nsq.Producer
 
 func main() {
 	rand.Seed(time.Now().Unix())
 	flag.Parse()
+	ThreadTraffic = make(chan int, *Thread)
 
 	if *Mode == "debug" {
 		wlog.DevelopMode()
