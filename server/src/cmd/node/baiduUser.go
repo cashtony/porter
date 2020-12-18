@@ -2,12 +2,9 @@ package main
 
 import (
 	"bytes"
-	"crypto/md5"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"math/rand"
 	"mime/multipart"
 	"net/http"
 	"net/textproto"
@@ -16,11 +13,8 @@ import (
 	"porter/define"
 	"porter/requester"
 	"porter/wlog"
-	"sort"
 	"strconv"
-	"strings"
 	"time"
-	"unicode"
 
 	"github.com/go-errors/errors"
 )
@@ -33,24 +27,6 @@ var (
 	cookieDomain = ".baidu.com"
 	uploadURL    = "https://quanmin.baidu.com/web/publish/upload"
 )
-
-var keywordList, nameList []string
-
-func init() {
-	nameData := ReadFileData("./names.txt")
-	if nameData == "" {
-		wlog.Warn("名字前后缀词表为空")
-	}
-
-	nameList = strings.Split(nameData, "\r\n")
-
-	wordData := ReadFileData("./keywords.txt")
-	if wordData == "" {
-		wlog.Warn("过滤关键词表为空")
-	}
-
-	keywordList = strings.Split(nameData, "\r\n")
-}
 
 type BaiduClient struct {
 	Nickname string
@@ -85,7 +61,7 @@ func (b *BaiduClient) SyncFromDouyin(shareURL string) error {
 	}
 
 	// 昵称和签名关键字过滤后进行更换
-	newName := fileterKeyWord(addExtraName(filterSpecial(apiDouyinUser.Nickname)))
+	newName := filterKeyword(addExtraName(filterSpecial(apiDouyinUser.Nickname)))
 	err = b.SetProfile(map[string]string{
 		"nickname": newName,
 	})
@@ -96,7 +72,7 @@ func (b *BaiduClient) SyncFromDouyin(shareURL string) error {
 	}
 
 	err = b.SetProfile(map[string]string{
-		"autograph": fileterKeyWord(filterSpecial(apiDouyinUser.Signature)),
+		"autograph": filterKeyword(filterSpecial(apiDouyinUser.Signature)),
 	})
 	if err != nil {
 		wlog.Infof("[%s]更换签名失败:%s \n", apiDouyinUser.Nickname, err)
@@ -107,72 +83,6 @@ func (b *BaiduClient) SyncFromDouyin(shareURL string) error {
 	wlog.Infof("[%s]信息复制完毕 \n", apiDouyinUser.Nickname)
 
 	return nil
-}
-
-func fileterKeyWord(content string) string {
-	newstr := ""
-	for _, value := range keywordList {
-		newstr = strings.ReplaceAll(content, value, "")
-	}
-
-	return newstr
-}
-
-// 过滤掉特殊字符
-func filterSpecial(content string) string {
-	var buffer bytes.Buffer
-	for _, v := range content {
-		if unicode.Is(unicode.Han, v) || unicode.IsLetter(v) || unicode.IsDigit(v) || unicode.IsPunct(v) {
-			buffer.WriteRune(v)
-			continue
-		}
-	}
-
-	return buffer.String()
-}
-
-func addExtraName(name string) string {
-	newName := ""
-
-	randIndex := rand.Intn(len(nameList) - 1)
-
-	// begin := rand.Intn(100) % 2
-	// if begin == 0 {
-	// newName = nameList[randIndex] + name
-	// } else {
-	newName = name + nameList[randIndex]
-	// }
-
-	return newName
-}
-
-var quoteEscaper = strings.NewReplacer("\\", "\\\\", `"`, "\\\"")
-
-func escapeQuotes(s string) string {
-	return quoteEscaper.Replace(s)
-}
-
-func calculateSig(m map[string]string, signKey string) string {
-	var keys []string
-	for k := range m {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-
-	sb := ""
-	for k := range keys {
-		sb += keys[k]
-		sb += "="
-		sb += m[keys[k]]
-		sb += "&"
-	}
-	sb += "sign_key="
-	sb += signKey
-
-	md5Ctx := md5.New()
-	md5Ctx.Write([]byte(sb))
-	cipherStr := md5Ctx.Sum(nil)
-	return hex.EncodeToString(cipherStr)
 }
 
 func (b *BaiduClient) Setportrait(imageURL string) error {

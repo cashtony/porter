@@ -79,7 +79,7 @@ func BindAdd(c *gin.Context) {
 
 		go func() {
 			tableDouyinUser.initVideoList()
-			bd.UploadVideo(UpdateTypeDaily)
+			bd.UploadVideo(UploadTypeDaily)
 		}()
 
 		sucNum++
@@ -162,7 +162,7 @@ func ManuallyDailyUpdate(c *gin.Context) {
 		return
 	}
 
-	go DailyUpdate()
+	go DailyUpload()
 
 	c.JSON(http.StatusOK, gin.H{
 		"code": define.Success,
@@ -178,7 +178,7 @@ func ManuallyNewVideoUpdate(c *gin.Context) {
 		return
 	}
 
-	go NewlyUpdate()
+	go NewlyUpload()
 
 	c.JSON(http.StatusOK, gin.H{
 		"code": define.Success,
@@ -250,6 +250,7 @@ func BaiduUserUpdate(c *gin.Context) {
 			continue
 		}
 		DB.Model(&BaiduUser{}).Where("uid = ?", u.UID).Updates(&BaiduUser{Diamond: u.Diamond})
+		time.Sleep(200 * time.Millisecond)
 	}
 
 	c.JSON(http.StatusOK, gin.H{

@@ -8,6 +8,7 @@ type DouyinVideo struct {
 	Desc       string // 视频描述
 	VID        string // 用于下载时填充链接
 	CreateTime time.Time
+	Duration   int
 	State      int // 0未搬运 1:已搬运
 }
 

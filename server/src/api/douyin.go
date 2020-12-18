@@ -5,9 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"porter/define"
 	"porter/requester"
 	"porter/wlog"
+	"time"
 )
 
 type APIDouyinUser struct {
@@ -22,7 +24,7 @@ type APIDouyinUser struct {
 		URLList []string `json:"url_list"`
 	} `json:"avatar_medium"`
 
-	secUID string
+	SecUID string `json:"-"`
 }
 
 func NewAPIDouyinUser(shareURL string) (*APIDouyinUser, error) {
@@ -60,7 +62,7 @@ func NewAPIDouyinUser(shareURL string) (*APIDouyinUser, error) {
 		return nil, fmt.Errorf("返回的状态代码未成功: %d", data.StatusCode)
 	}
 
-	data.UserInfo.secUID = secUID
+	data.UserInfo.SecUID = secUID
 
 	return data.UserInfo, nil
 }
@@ -74,4 +76,88 @@ func GetSecID(shareURL string) string {
 	defer resp.Body.Close()
 
 	return resp.Request.URL.Query().Get("sec_uid")
+}
+
+type APIDouyinVideo struct {
+	AwemeID string `json:"aweme_id"`
+	Desc    string `json:"desc"`
+	Video   struct {
+		Cover struct {
+			URLList []string `json:"url_list"`
+		} `json:"cover"`
+		Duration int    `json:"duration"`
+		Height   int    `json:"height"`
+		Width    int    `json:"width"`
+		VID      string `json:"vid"`
+		PlayAddr struct {
+			URLList []string `json:"url_list"`
+		} `json:"play_addr"`
+	} `json:"video"`
+}
+
+func GetDouyinVideo(secUID string, cursor int64) ([]*APIDouyinVideo, int64, error) {
+	if secUID == "" {
+		return nil, 0, errors.New("secUID不能为空")
+	}
+
+	data := struct {
+		AwemeList  []*APIDouyinVideo `json:"aweme_list"`
+		HasMore    interface{}       `json:"has_more"`
+		MaxCursor  int64             `json:"max_cursor"`
+		MinCursor  int64             `json:"min_cursor"`
+		StatusCode int               `json:"status_code"`
+	}{}
+
+	tryTimes := 0
+	url := fmt.Sprintf("%s?sec_uid=%s&count=20&max_cursor=%d&aid=1128&_signature=&dytk=", define.GetVideoList, secUID, cursor)
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, 0, err
+	}
+	req.Header.Set("User-Agent", requester.UserAgent)
+
+	for {
+		time.Sleep(500 * time.Millisecond)
+
+		if tryTimes > 500 {
+			wlog.Infof("[警告]获取视频列表尝试超过%d次仍然没有获得数据", tryTimes)
+			tryTimes = 0
+		}
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			tryTimes++
+			continue
+		}
+		defer resp.Body.Close()
+
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return nil, 0, err
+		}
+
+		if err := json.Unmarshal(body, &data); err != nil {
+			return nil, 0, err
+		}
+
+		if len(data.AwemeList) == 0 && data.StatusCode == 0 && data.MaxCursor == 0 {
+			tryTimes++
+			continue
+		}
+
+		break
+	}
+
+	maxCursor := int64(0)
+	hasmore := false
+	switch data.HasMore.(type) {
+	case bool:
+		hasmore = data.HasMore.(bool)
+	}
+
+	if hasmore && data.MaxCursor != 0 {
+		maxCursor = data.MaxCursor
+	}
+
+	return data.AwemeList, maxCursor, nil
+
 }

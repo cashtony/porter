@@ -47,7 +47,7 @@ func main() {
 
 	// 定时器初始化, 每天固定时间开始进行用户视频的检测
 	c := cron.New()
-	c.AddFunc("0 22 * * *", DailyUpdate)
+	c.AddFunc("0 22 * * *", DailyUpload)
 	go c.Run()
 
 	// gin初始化

@@ -1,10 +1,10 @@
 package main
 
-type UpdateType int
+type UploadType int
 
 const (
-	UpdateTypeDaily UpdateType = iota + 1
-	UpdateTypeNewly
+	UploadTypeDaily UploadType = iota + 1
+	UploadTypeNewly
 )
 
 type GetMode int

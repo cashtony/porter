@@ -20,3 +20,13 @@ func TestFilterCharacter(t *testing.T) {
 		t.Error("过滤不一致", result)
 	}
 }
+
+func TestFilterKeywords(t *testing.T) {
+	str := "第一个龙珠#不火系列 @DOU+小助手 @抖音小助手"
+	want := "第一个龙珠#不火系列 @小助手 "
+
+	result := filterKeyword(str)
+	if want != result {
+		t.Error("过滤不一致", result)
+	}
+}

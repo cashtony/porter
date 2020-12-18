@@ -45,7 +45,7 @@ func excuteTask(task *define.TaskUpload) {
 
 	for i, v := range task.Videos {
 		vid := i + 1
-		filterDesc := fileterKeyWord(v.Desc)
+		filterDesc := filterKeyword(v.Desc)
 		wlog.Infof("[%s][%d][%s]开始下载 \n", task.Nickname, i+1, filterDesc)
 		// 下载视频
 		filePath, err := download(task.Nickname, filterDesc, v.DownloadURL)

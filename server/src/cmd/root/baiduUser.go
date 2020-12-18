@@ -180,8 +180,7 @@ func (b *BaiduUser) getVideoList(num int, mode GetMode) ([]*DouyinVideo, error) 
 	}
 }
 
-// UploadNewOrOlderVideo 上传之前的老视频
-func (b *BaiduUser) UploadVideo(utype UpdateType) {
+func (b *BaiduUser) UploadVideo(utype UploadType) {
 	// 上传视频(从未上传的视频中挑选8-12条)
 	uploadVideoList := make([]*DouyinVideo, 0)
 	num := rand.Intn(MaxUploadNum-MinUploadNum) + MinUploadNum
@@ -191,7 +190,8 @@ func (b *BaiduUser) UploadVideo(utype UpdateType) {
 		return
 	}
 
-	if len(uploadVideoList) == 0 && utype == UpdateTypeDaily {
+	// 没有新视频并且今天没有更新过视频才从以前的视频中提取
+	if utype == UploadTypeDaily && len(uploadVideoList) == 0 && b.LastUploadTime.Day() != time.Now().Day() {
 		wlog.Infof("用户[%s][%s]绑定的抖音号昨天没有更新,将获取以前的视频 \n", b.UID, b.Nickname)
 		uploadVideoList, err = b.getVideoList(num, GetModeOlder)
 		if err != nil {
@@ -201,7 +201,7 @@ func (b *BaiduUser) UploadVideo(utype UpdateType) {
 	}
 
 	if len(uploadVideoList) == 0 {
-		wlog.Infof("用户[%s][%s]绑定的抖音号没有可更新内容,退出 \n", b.UID, b.Nickname)
+		wlog.Infof("用户[%s][%s]没有可更新内容,退出 \n", b.UID, b.Nickname)
 		return
 	}
 

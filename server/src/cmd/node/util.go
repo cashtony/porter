@@ -5,17 +5,22 @@ import (
 	"context"
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/md5"
 	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"io/ioutil"
 	"log"
+	"math/rand"
 	"os"
 	"os/exec"
 	"path"
 	"porter/requester"
 	"porter/wlog"
+	"sort"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/dom"
@@ -23,16 +28,98 @@ import (
 	"github.com/chromedp/chromedp"
 )
 
+var keywordList, nameList []string
+
+func InitConfigFile() {
+	nameData := ReadFileData("./names.txt")
+	if nameData == "" {
+		wlog.Info("名字前后缀词表为空")
+	}
+
+	nameList = strings.Split(nameData, "\r\n")
+
+	wordData := ReadFileData("./keywords.txt")
+	if wordData == "" {
+		wlog.Info("过滤关键词表为空")
+	}
+
+	keywordList = strings.Split(wordData, "\r\n")
+}
+
+func filterKeyword(content string) string {
+	for _, value := range keywordList {
+		content = strings.ReplaceAll(content, value, "")
+	}
+	return content
+}
+
+// 过滤掉特殊字符
+func filterSpecial(content string) string {
+	var buffer bytes.Buffer
+	for _, v := range content {
+		if unicode.Is(unicode.Han, v) || unicode.IsLetter(v) || unicode.IsDigit(v) || unicode.IsPunct(v) {
+			buffer.WriteRune(v)
+			continue
+		}
+	}
+
+	return buffer.String()
+}
+
+func addExtraName(name string) string {
+	newName := ""
+
+	randIndex := rand.Intn(len(nameList) - 1)
+
+	// begin := rand.Intn(100) % 2
+	// if begin == 0 {
+	// newName = nameList[randIndex] + name
+	// } else {
+	newName = name + nameList[randIndex]
+	// }
+
+	return newName
+}
+
+var quoteEscaper = strings.NewReplacer("\\", "\\\\", `"`, "\\\"")
+
+func escapeQuotes(s string) string {
+	return quoteEscaper.Replace(s)
+}
+
+func calculateSig(m map[string]string, signKey string) string {
+	var keys []string
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	sb := ""
+	for k := range keys {
+		sb += keys[k]
+		sb += "="
+		sb += m[keys[k]]
+		sb += "&"
+	}
+	sb += "sign_key="
+	sb += signKey
+
+	md5Ctx := md5.New()
+	md5Ctx.Write([]byte(sb))
+	cipherStr := md5Ctx.Sum(nil)
+	return hex.EncodeToString(cipherStr)
+}
+
 func ReadFileData(path string) string {
 	f, err := os.Open(path)
 	if err != nil {
-		wlog.Error("读取文件失败, 请检查", err)
+		wlog.Error("读取文件失败, 请检查", path, err)
 	}
 	defer f.Close()
 
 	fd, err := ioutil.ReadAll(f)
 	if err != nil {
-		wlog.Error("读取文件内容失败, 请检查", err)
+		wlog.Error("读取文件内容失败, 请检查", path, err)
 	}
 
 	return string(fd)
