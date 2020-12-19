@@ -13,3 +13,10 @@ const (
 	GetModeNewly GetMode = iota + 1
 	GetModeOlder
 )
+
+type BaiduUserStatus int
+
+const (
+	Disable BaiduUserStatus = iota
+	Normal
+)

@@ -63,8 +63,11 @@ func main() {
 	g.POST("/baidu/user/list", BaiduUserList)
 	g.POST("/baidu/user/edit", BaiduUserEdit)
 	g.POST("/baidu/user/update", BaiduUserUpdate)
-	g.POST("/bind/add", BindAdd)
 	g.POST("/baidu/user/sync", SyncBaiduUser)
+	g.POST("/baidu/user/changeStatus", ChangeBaiduUserStatus)
+
+	g.POST("/bind/add", BindAdd)
+
 	g.POST("/statistic", GetStatistic)
 
 	g.POST("/manage/manuallyDailyUpdate", ManuallyDailyUpdate)

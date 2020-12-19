@@ -7,12 +7,11 @@
     >
       <el-form-item label="账号信息">
         <el-input
+          v-model="content"
           type="textarea"
           :autosize="{ minRows: 5 }"
           placeholder="需要按照从excel表中默认复制出来的格式: 百度bduss  抖音分享链接"
-          v-model="content"
-        >
-        </el-input>
+        />
       </el-form-item>
       <el-form-item>
         <el-button
@@ -25,7 +24,7 @@
 </template>
 
 <script>
-import { syncUser } from '@/api/table'
+import { syncUser } from '@/api/baidu'
 
 export default {
   name: 'AddAccount',

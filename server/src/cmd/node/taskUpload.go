@@ -29,6 +29,10 @@ func (q *TaskUploadHandler) HandleMessage(m *nsq.Message) error {
 }
 
 func excuteTask(task *define.TaskUpload) {
+	defer func() {
+		<-ThreadTraffic
+	}()
+
 	wlog.Infof("用户[%s]接收到任务 数量:%d \n", task.Nickname, len(task.Videos))
 	if task.Bduss == "" {
 		wlog.Errorf("[%s] bduss为空 任务错误: \n", task.Nickname)
@@ -85,6 +89,4 @@ func excuteTask(task *define.TaskUpload) {
 	deleteUserDir(task.Nickname)
 
 	wlog.Infof("用户[%s]任务完成, 成功[%d]条, 失败[%d]条 \n", task.Nickname, sucNum, len(task.Videos)-sucNum)
-
-	<-ThreadTraffic
 }

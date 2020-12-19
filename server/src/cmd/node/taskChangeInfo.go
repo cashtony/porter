@@ -33,11 +33,12 @@ func (t *TaskChangeInfoHandler) HandleMessage(m *nsq.Message) error {
 }
 
 func excuteChangeInfo(item *define.TaskChangeInfoItem) {
+	defer func() {
+		<-ThreadTraffic
+	}()
 	client := NewBaiduClient(item.Bduss)
 	err := client.SyncFromDouyin(item.DouyinURL)
 	if err != nil {
 		wlog.Error("从抖音复制用户数据到全民失败:", err)
 	}
-
-	<-ThreadTraffic
 }

@@ -21,11 +21,11 @@ type BaiduUser struct {
 	Bduss          string          `gorm:"primaryKey" json:"dbuss"`
 	FansNum        int             `json:"fansNum"`
 	Diamond        int             `json:"diamond"`
-	Tbean          int             `json:"tbean"` // T豆
 	VideoCount     int             `json:"videoCount"`
 	DouyinURL      string          `json:"douyinURL"` // 绑定的抖音uid
 	CreateTime     define.JsonTime `gorm:"default:now()" json:"createTime"`
 	LastUploadTime time.Time       `json:"lastUploadTime"`
+	Status         int             `json:"status" gorm:"default:1"` // 1:正常, 0:不搬运视频
 }
 
 func NewBaiduUser(bduss string) (*BaiduUser, error) {

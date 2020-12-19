@@ -83,6 +83,25 @@
           <span>{{ scope.row.createTime }}</span>
         </template>
       </el-table-column>
+
+      <el-table-column
+        label="状态"
+        align="center"
+      >
+        <template slot-scope="{row}">
+
+          <el-switch
+            v-model="row.status"
+            active-color="#13ce66"
+            inactive-color="#ff4949"
+            :active-value=1
+            :inactive-value=0
+            @change="onStatusChange(row)"
+          />
+
+        </template>
+      </el-table-column>
+
       <el-table-column
         label="操作"
         align="center"
@@ -147,7 +166,7 @@
 </template>
 
 <script>
-import { getBaiduUserList, editBaiduUser } from '@/api/table'
+import { getBaiduUserList, editBaiduUser, changeStatus } from '@/api/baidu'
 
 export default {
   name: 'BaiduAccountList',
@@ -200,7 +219,6 @@ export default {
       this.dialogForm = Object.assign({}, row) // copy obj
     },
     updateData() {
-      console.log('update')
       const tempData = Object.assign({}, this.dialogForm)
 
       editBaiduUser(tempData).then(response => {
@@ -225,7 +243,35 @@ export default {
         this.fetchData()
       })
     },
-    createData() {}
+    onStatusChange(row) {
+      console.log('row.status:', row.uid)
+      changeStatus({ uid: row.uid, status: row.status }).then(response => {
+        if (response.code !== 1000) {
+          this.$notify({
+            title: '操作失败了,请稍后再试:' + response.code,
+            type: 'failed',
+            duration: 2000
+          })
+          return
+        }
+
+        this.$notify({
+          title: '数据变更',
+          message: '更新成功',
+          type: 'success',
+          duration: 2000
+        })
+      })
+
+      // row.status = 1
+      // var item = this.list[index]
+      // console.log('row.status:', item.status)
+      // if (item === undefined) {
+      //   return
+      // }
+      // item.status = item.status === '0' ? '1' : '0'
+      // this.list[index] = item
+    }
   }
 }
 </script>

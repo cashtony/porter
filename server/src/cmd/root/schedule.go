@@ -81,6 +81,7 @@ func ScheduleUpload(utype UploadType) {
 			apiDouyinUser, err := api.NewAPIDouyinUser(u.DouyinURL)
 			if err != nil {
 				wlog.Error("获取抖音用户数据失败:", err)
+				<-ThreadTraffic
 				return
 			}
 			duser := &DouyinUser{
@@ -90,11 +91,13 @@ func ScheduleUpload(utype UploadType) {
 				secUID:   apiDouyinUser.SecUID,
 			}
 			duser.Update()
-			// 进行每日更新还是普通更新
-			u.UploadVideo(utype)
+			if u.Status == int(Normal) {
+				u.UploadVideo(utype)
+			}
 
 			wg.Done()
 			<-ThreadTraffic
+
 		}(bduser)
 	}
 
