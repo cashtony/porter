@@ -43,7 +43,15 @@ func NewAPIDouyinUser(shareURL string) (*APIDouyinUser, error) {
 	}{}
 
 	infoReq := fmt.Sprintf("%s?sec_uid=%s", define.GetUserInfo, secUID)
-	resp, err := requester.DefaultClient.Req("GET", infoReq, nil, nil)
+
+	client := &http.Client{}
+	req, err := http.NewRequest(http.MethodGet, infoReq, nil)
+	if err != nil {
+		return nil, fmt.Errorf("创建请求失败: %s", err)
+	}
+	req.Header.Add("User-Agent", requester.UserAgent)
+
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("获取用户数据时失败:%s %s", infoReq, err)
 	}
@@ -68,7 +76,15 @@ func NewAPIDouyinUser(shareURL string) (*APIDouyinUser, error) {
 }
 
 func GetSecID(shareURL string) string {
-	resp, err := requester.DefaultClient.Req("GET", shareURL, nil, nil)
+	client := &http.Client{}
+	req, err := http.NewRequest(http.MethodGet, shareURL, nil)
+	if err != nil {
+		wlog.Error("获取secid时创建请求失败:", err)
+		return ""
+	}
+	req.Header.Add("User-Agent", requester.UserAgent)
+
+	resp, err := client.Do(req)
 	if err != nil {
 		wlog.Error("获取secid失败: %s %s", shareURL, err)
 		return ""
@@ -110,6 +126,7 @@ func GetDouyinVideo(secUID string, cursor int64) ([]*APIDouyinVideo, int64, erro
 
 	tryTimes := 0
 	url := fmt.Sprintf("%s?sec_uid=%s&count=20&max_cursor=%d&aid=1128&_signature=&dytk=", define.GetVideoList, secUID, cursor)
+
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return nil, 0, err

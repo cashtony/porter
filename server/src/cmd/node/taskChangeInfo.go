@@ -26,13 +26,13 @@ func (t *TaskChangeInfoHandler) HandleMessage(m *nsq.Message) error {
 
 	for _, item := range task.List {
 		ThreadTraffic <- 1
-		go excuteChangeInfo(&item)
+		go excuteChangeInfo(item)
 	}
 
 	return nil
 }
 
-func excuteChangeInfo(item *define.TaskChangeInfoItem) {
+func excuteChangeInfo(item define.TaskChangeInfoItem) {
 	defer func() {
 		<-ThreadTraffic
 	}()

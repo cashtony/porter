@@ -31,7 +31,6 @@ func BindAdd(c *gin.Context) {
 		return
 	}
 
-	failRecords := make([]string, 0)
 	// 解析成单行
 	lines := strings.Split(cleanContent, "\n")
 	sucNum, total := 0, 0
@@ -39,43 +38,43 @@ func BindAdd(c *gin.Context) {
 		if line == "" {
 			continue
 		}
-		time.Sleep(300 * time.Millisecond)
+
 		total++
 		accounts := strings.Split(line, "\t")
 		bduss, douyinShare := accounts[0], accounts[1]
+		errcode := 0
+		apiDouyinUser, err := api.NewAPIDouyinUser(douyinShare)
+		if err != nil {
+			wlog.Info("抖音用户解析失败", douyinShare, err)
+			errcode = BindErrDouyinUser
+		}
 
 		num := int64(0)
-		result := DB.Model(&BaiduUser{}).Where("douyin_url = ?", douyinShare).Count(&num)
+		result := DB.Model(&BaiduUser{}).Where("douyin_uid = ?", apiDouyinUser.UID).Count(&num)
 		if result.Error != nil {
 			wlog.Errorf("新增账号时检测重复抖音号[%s]时出现问题:%s", douyinShare, result.Error)
-			continue
+			errcode = BindErrSqlQuery
 		}
 		if num != 0 {
-			wlog.Info("抖音号[%s]已经被绑定,将跳过此绑定", douyinShare)
-			continue
+			wlog.Infof("抖音号[%s]已经被绑定,将跳过此绑定", apiDouyinUser.UID)
+			errcode = BindErrAlreadyBind
 		}
-		var baiduErr, douyinErr bool
 
 		bd, err := NewBaiduUser(bduss)
 		if err != nil {
-			wlog.Error("百度bduss解析失败", bduss, err)
-			baiduErr = true
-			failRecords = append(failRecords, bduss)
-		}
-		apiDouyinUser, err := api.NewAPIDouyinUser(douyinShare)
-		if err != nil {
-			wlog.Error("抖音用户解析失败", douyinShare, err)
-			douyinErr = true
-			failRecords = append(failRecords, douyinShare)
+			wlog.Info("百度bduss解析失败:", bduss, err)
+			errcode = BindErrBdussWrong
 		}
 
 		// 任意一个解析有问题就不进行绑定
-		if baiduErr || douyinErr {
-			storeFaild(bduss, douyinShare)
+		if errcode != 0 {
+			storeFaild(bduss, douyinShare, errcode)
 			continue
 		}
-		wlog.Debugf("开始绑定%s %s \n", bd.Nickname, apiDouyinUser.Nickname)
+		wlog.Debugf("开始绑定[%s]和[%s] \n", bd.Nickname, apiDouyinUser.Nickname)
+		bd.DouyinUID = apiDouyinUser.UID
 		bd.DouyinURL = douyinShare
+		bd.Status = int(BaiduUserStatusNormal)
 
 		tableDouyinUser := &DouyinUser{
 			UID:        apiDouyinUser.UID,
@@ -140,9 +139,21 @@ func BaiduUserEdit(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": define.ParamErr})
 		return
 	}
-
-	result := DB.Model(&BaiduUser{}).Where("uid = ?", param.UID).Update("douyin_url", param.DouyinURL)
-	if result.Error != nil {
+	douyinUser, err := api.NewAPIDouyinUser(param.DouyinURL)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": define.WrongDouyinShareURL})
+		return
+	}
+	num := int64(0)
+	if result := DB.Model(&BaiduUser{}).Where("douyin_uid = ?", douyinUser.UID).Count(&num); result.Error != nil {
+		c.JSON(http.StatusOK, gin.H{"code": define.QueryDataErr, "message": "数据查找错误,请稍后再试"})
+		return
+	}
+	if num > 0 {
+		c.JSON(http.StatusOK, gin.H{"code": define.AlreadyBind, "message": "该抖音账号已经绑定其他百度账号"})
+		return
+	}
+	if result := DB.Model(&BaiduUser{}).Where("uid = ?", param.UID).Updates(BaiduUser{DouyinUID: douyinUser.UID, DouyinURL: param.DouyinURL}); result.Error != nil {
 		c.JSON(http.StatusOK, gin.H{"code": define.CannotBind})
 		return
 	}
@@ -178,7 +189,7 @@ func BaiduUserUpdate(c *gin.Context) {
 			continue
 		}
 		DB.Model(&BaiduUser{}).Where("uid = ?", u.UID).Updates(&BaiduUser{Diamond: u.Diamond})
-		time.Sleep(300 * time.Millisecond)
+		time.Sleep(100 * time.Millisecond)
 	}
 
 	c.JSON(http.StatusOK, gin.H{

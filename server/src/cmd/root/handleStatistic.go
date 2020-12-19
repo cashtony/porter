@@ -49,10 +49,11 @@ func GetStatistic(c *gin.Context) {
 		"totalNum": totalNum,
 	})
 }
-func storeFaild(bduss, douyin string) {
+func storeFaild(bduss, douyin string, code int) {
 	r := &FaildRecords{
-		Bduss:  bduss,
-		Douyin: douyin,
+		Bduss:   bduss,
+		Douyin:  douyin,
+		Errcode: code,
 	}
 
 	DB.Create(r)

@@ -40,7 +40,7 @@
 
       <el-table-column
         label="粉丝数"
-        width="150"
+        width="80"
         align="center"
       >
         <template slot-scope="scope">
@@ -50,7 +50,7 @@
 
       <el-table-column
         label="钻石数"
-        width="150"
+        width="80"
         align="center"
       >
         <template slot-scope="scope">
@@ -59,7 +59,7 @@
       </el-table-column>
       <el-table-column
         label="视频数量"
-        width="150"
+        width="80"
         align="center"
       >
         <template slot-scope="scope">
@@ -76,6 +76,15 @@
         </template>
       </el-table-column>
       <el-table-column
+        label="抖音UID"
+        width="150"
+        align="center"
+      >
+        <template slot-scope="scope">
+          <span>{{ scope.row.uid }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column
         label="创建时间"
         align="center"
       >
@@ -86,6 +95,7 @@
 
       <el-table-column
         label="状态"
+        width="80"
         align="center"
       >
         <template slot-scope="{row}">
@@ -103,6 +113,7 @@
       </el-table-column>
 
       <el-table-column
+        width="100"
         label="操作"
         align="center"
       >
@@ -221,56 +232,32 @@ export default {
     updateData() {
       const tempData = Object.assign({}, this.dialogForm)
 
-      editBaiduUser(tempData).then(response => {
-        if (response.code !== 1000) {
+      editBaiduUser({ uid: tempData.uid, douyinURL: tempData.douyinURL })
+        .then(response => {
+          this.dialogFormVisible = false
+
           this.$notify({
-            title: '操作失败了,请稍后再试:' + response.code,
-            type: 'failed',
+            title: '用户数据变更',
+            message: '更新成功',
+            type: 'success',
             duration: 2000
           })
-          return
-        }
 
-        this.dialogFormVisible = false
-
-        this.$notify({
-          title: '用户数据变更',
-          message: '更新成功',
-          type: 'success',
-          duration: 2000
+          this.fetchData()
         })
-
-        this.fetchData()
-      })
+        .catch(message => {})
     },
     onStatusChange(row) {
-      console.log('row.status:', row.uid)
-      changeStatus({ uid: row.uid, status: row.status }).then(response => {
-        if (response.code !== 1000) {
+      changeStatus({ uid: row.uid, status: row.status })
+        .then(response => {
           this.$notify({
-            title: '操作失败了,请稍后再试:' + response.code,
-            type: 'failed',
+            title: '用户数据变化',
+            message: '更新成功',
+            type: 'success',
             duration: 2000
           })
-          return
-        }
-
-        this.$notify({
-          title: '数据变更',
-          message: '更新成功',
-          type: 'success',
-          duration: 2000
         })
-      })
-
-      // row.status = 1
-      // var item = this.list[index]
-      // console.log('row.status:', item.status)
-      // if (item === undefined) {
-      //   return
-      // }
-      // item.status = item.status === '0' ? '1' : '0'
-      // this.list[index] = item
+        .catch(message => {})
     }
   }
 }

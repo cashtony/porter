@@ -42,7 +42,7 @@ type BaiduClient struct {
 // 将抖音那边的头像,昵称,签名等数据同步到百度
 func (b *BaiduClient) SyncFromDouyin(shareURL string) error {
 	if shareURL == "" {
-		return errors.Errorf("用户[%s]绑定的抖音为空,不同步数据 \n", b.Nickname)
+		return errors.Errorf("用户[%s]绑定的抖音为空,不同步数据", b.Nickname)
 	}
 
 	apiDouyinUser, err := api.NewAPIDouyinUser(shareURL)
@@ -50,14 +50,14 @@ func (b *BaiduClient) SyncFromDouyin(shareURL string) error {
 		return fmt.Errorf("获取抖音用户数据失败:%s", err)
 	}
 
-	wlog.Infof("开始从抖音用户[%s]复制用户信息 \n", apiDouyinUser.Nickname)
+	wlog.Infof("开始从抖音用户[%s]复制用户信息", apiDouyinUser.Nickname)
 
 	headImgURL := apiDouyinUser.AvatarMedium.URLList[0]
 	// 更换头像
 	if err := b.Setportrait(headImgURL); err != nil {
-		wlog.Infof("[%s]更换头像失败: %s \n", apiDouyinUser.Nickname, err)
+		wlog.Infof("[%s]更换头像失败: %s", apiDouyinUser.Nickname, err)
 	} else {
-		wlog.Infof("[%s]头像更换成功 \n", apiDouyinUser.Nickname)
+		wlog.Infof("[%s]头像更换成功", apiDouyinUser.Nickname)
 	}
 
 	// 昵称和签名关键字过滤后进行更换
@@ -66,21 +66,22 @@ func (b *BaiduClient) SyncFromDouyin(shareURL string) error {
 		"nickname": newName,
 	})
 	if err != nil {
-		wlog.Infof("[%s]更换昵称失败: %s \n", apiDouyinUser.Nickname, err)
+		wlog.Infof("[%s]更换昵称[%s]失败: %s", apiDouyinUser.Nickname, newName, err)
 	} else {
-		wlog.Infof("[%s]昵称更换为[%s]成功 \n", apiDouyinUser.Nickname, newName)
+		wlog.Infof("[%s]昵称更换为[%s]成功", apiDouyinUser.Nickname, newName)
 	}
 
+	autograph := filterKeyword(filterSpecial(apiDouyinUser.Signature))
 	err = b.SetProfile(map[string]string{
-		"autograph": filterKeyword(filterSpecial(apiDouyinUser.Signature)),
+		"autograph": autograph,
 	})
 	if err != nil {
-		wlog.Infof("[%s]更换签名失败:%s \n", apiDouyinUser.Nickname, err)
+		wlog.Infof("[%s]更换签名[%s]失败: %s", apiDouyinUser.Nickname, autograph, err)
 	} else {
-		wlog.Infof("[%s]签名更换成功 \n", apiDouyinUser.Nickname)
+		wlog.Infof("[%s]签名更换成功", apiDouyinUser.Nickname)
 	}
 
-	wlog.Infof("[%s]信息复制完毕 \n", apiDouyinUser.Nickname)
+	wlog.Infof("[%s]信息复制完毕", apiDouyinUser.Nickname)
 
 	return nil
 }

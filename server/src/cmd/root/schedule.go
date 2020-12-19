@@ -91,7 +91,7 @@ func ScheduleUpload(utype UploadType) {
 				secUID:   apiDouyinUser.SecUID,
 			}
 			duser.Update()
-			if u.Status == int(Normal) {
+			if u.Status == int(BaiduUserStatusNormal) {
 				u.UploadVideo(utype)
 			}
 

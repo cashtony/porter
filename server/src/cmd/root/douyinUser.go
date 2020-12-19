@@ -30,13 +30,11 @@ type DouyinUser struct {
 func (d *DouyinUser) initVideoList() {
 
 	var (
-		onePageList       = make([]*DouyinVideo, 0)
-		nextCursor  int64 = 0
-		hasMore           = true
-		page              = 1
+		nextCursor int64 = 0
+		page             = 1
 	)
 	secUID := api.GetSecID(d.ShareURL)
-	for nextCursor != 0 {
+	for {
 		wlog.Debugf("开始解析[%s]第[%d]页视频 \n", d.Nickname, page)
 		apiVideoList, newCursor, err := api.GetDouyinVideo(secUID, nextCursor)
 		if err != nil {
@@ -44,17 +42,23 @@ func (d *DouyinUser) initVideoList() {
 			return
 		}
 
+		onePageList := make([]*DouyinVideo, 0)
 		for _, v := range apiVideoList {
 			onePageList = append(onePageList, &DouyinVideo{
 				AwemeID:   v.AwemeID,
 				Desc:      v.Desc,
-				DouyinURL: d.ShareURL,
+				DouyinUID: d.UID,
 				VID:       v.Video.VID,
 				Duration:  v.Video.Duration,
 			})
 		}
 		d.StoreVideo(onePageList)
-		wlog.Debugf("[%s]第[%d]页视频解析完毕 hasmore:%b nextCursor:%d videoLen:%d \n", d.Nickname, page, hasMore, nextCursor, len(onePageList))
+
+		wlog.Debugf("[%s]第[%d]页视频解析完毕 newCursor:%d videoLen:%d \n", d.Nickname, page, newCursor, len(onePageList))
+		if newCursor == 0 {
+			break
+		}
+
 		nextCursor = newCursor
 		page++
 	}
@@ -174,7 +178,7 @@ func (d *DouyinUser) Update() {
 		onePageList = append(onePageList, &DouyinVideo{
 			AwemeID:    v.AwemeID,
 			Desc:       v.Desc,
-			DouyinURL:  d.ShareURL,
+			DouyinUID:  d.UID,
 			VID:        v.Video.VID,
 			Duration:   v.Video.Duration,
 			CreateTime: videoExtraInfo.CreateTime,
@@ -208,12 +212,19 @@ func getVideoExtraInfo(awemeid string) (*DouyinVideoExtraInfo, error) {
 	tryTimes := 10
 	var resp *http.Response
 	var err error
+	client := &http.Client{}
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("获取secid时创建请求失败:%s", err)
+	}
+	req.Header.Add("User-Agent", requester.UserAgent)
+
 	for tryTimes > 0 {
-		resp, err = requester.DefaultClient.Req("GET", url, nil, nil)
+		resp, err = client.Do(req)
 		if err != nil {
 			tryTimes--
 			// 设置间隔为了防止两次调用时间间隔过短导致握手失败
-			time.Sleep(1 * time.Second)
+			time.Sleep(200 * time.Millisecond)
 			continue
 		}
 		break

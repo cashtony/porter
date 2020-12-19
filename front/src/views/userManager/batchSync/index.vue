@@ -1,9 +1,9 @@
 <template>
   <div>
     <el-form
-      ref="form"
-      :model="form"
       label-width="120px"
+      v-loading="loading"
+      element-loading-text="拼命加载中"
     >
       <el-form-item label="账号信息">
         <el-input
@@ -30,19 +30,22 @@ export default {
   name: 'AddAccount',
   data() {
     return {
-      content: ''
+      content: '',
+      loading: false
     }
   },
   methods: {
     onSubmit() {
-      syncUser({ content: this.content }).then(response => {
-        if (response.code === 1000) {
+      this.loading = true
+      syncUser({ content: this.content })
+        .then(response => {
           this.$message.success('成功')
           this.content = ''
-        } else {
-          this.$message.error('操作失败,请联系管理员')
-        }
-      })
+          this.loading = false
+        })
+        .catch(message => {
+          this.loading = false
+        })
     }
   }
 }

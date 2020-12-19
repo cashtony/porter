@@ -4,7 +4,7 @@ import "time"
 
 type DouyinVideo struct {
 	AwemeID    string `gorm:"primaryKey"`
-	DouyinURL  string // 抖音分享url
+	DouyinUID  string // 抖音UID
 	Desc       string // 视频描述
 	VID        string // 用于下载时填充链接
 	CreateTime time.Time
@@ -30,13 +30,14 @@ type FaildRecords struct {
 	ID         int `gorm:"PRIMARY_KEY;AUTO_INCREMENT"`
 	Bduss      string
 	Douyin     string
+	Errcode    int       `gorm:"default:0"`
 	CreateTime time.Time `gorm:"default:now()"`
 }
 
 type Statistic struct {
 	ID         int       `gorm:"AUTO_INCREMENT"`
 	BaiduUID   string    // 传到哪个百度uid
-	DouyinURL  string    // 从哪个抖音号中搬运
+	DouyinUID  string    // 从哪个抖音号中搬运
 	AwemeID    string    // 视频id
 	UploadTime time.Time `gorm:"default:now()"` // 上传时间
 	State      int       // 上传状态 0:上传成功 1:上传中

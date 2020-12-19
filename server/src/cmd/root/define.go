@@ -17,6 +17,15 @@ const (
 type BaiduUserStatus int
 
 const (
-	Disable BaiduUserStatus = iota
-	Normal
+	BaiduUserStatusDisable BaiduUserStatus = iota
+	BaiduUserStatusNormal
+)
+
+type BindErr int
+
+const (
+	BindErrDouyinUser = iota + 1
+	BindErrBdussWrong
+	BindErrAlreadyBind
+	BindErrSqlQuery
 )

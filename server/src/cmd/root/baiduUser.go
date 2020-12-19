@@ -22,7 +22,8 @@ type BaiduUser struct {
 	FansNum        int             `json:"fansNum"`
 	Diamond        int             `json:"diamond"`
 	VideoCount     int             `json:"videoCount"`
-	DouyinURL      string          `json:"douyinURL"` // 绑定的抖音uid
+	DouyinUID      string          `json:"douyinUID"` // 绑定的抖音uid
+	DouyinURL      string          `json:"douyinURL"`
 	CreateTime     define.JsonTime `gorm:"default:now()" json:"createTime"`
 	LastUploadTime time.Time       `json:"lastUploadTime"`
 	Status         int             `json:"status" gorm:"default:1"` // 1:正常, 0:不搬运视频
@@ -44,16 +45,16 @@ func NewBaiduUser(bduss string) (*BaiduUser, error) {
 }
 
 func (b *BaiduUser) fetchQuanminInfo() error {
-	cookie := http.Cookie{Name: "BDUSS", Value: b.Bduss, Expires: time.Now().Add(180 * 24 * time.Hour)}
-	// 再获取全民视频相关数据
-	quanminReq, err := http.NewRequest("POST", define.GetQuanminInfoV2, nil)
+	client := &http.Client{}
+	req, err := http.NewRequest("POST", define.GetQuanminInfoV2, nil)
 	if err != nil {
 		return fmt.Errorf("创建请求失败: %s", err)
 	}
+	req.Header.Add("User-Agent", requester.UserAgent)
+	cookie := http.Cookie{Name: "BDUSS", Value: b.Bduss, Expires: time.Now().Add(180 * 24 * time.Hour)}
+	req.AddCookie(&cookie)
 
-	quanminReq.AddCookie(&cookie)
-
-	quanminResp, err := requester.DefaultClient.Do(quanminReq)
+	quanminResp, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("获取全民账号的基本信息出错: %s", err)
 	}
@@ -98,15 +99,24 @@ func (b *BaiduUser) fetchQuanminInfo() error {
 }
 
 func (b *BaiduUser) fetcBaseInfo() error {
-	cookie := http.Cookie{Name: "BDUSS", Value: b.Bduss, Expires: time.Now().Add(180 * 24 * time.Hour)}
-	req, err := http.NewRequest("GET", define.GetBaiduBaseInfo, nil)
+	client := &http.Client{}
+	req, err := http.NewRequest(http.MethodGet, define.GetBaiduBaseInfo, nil)
 	if err != nil {
 		return fmt.Errorf("创建请求失败: %s", err)
 	}
+	req.Header.Add("User-Agent", requester.UserAgent)
+	cookie := http.Cookie{Name: "BDUSS", Value: b.Bduss, Expires: time.Now().Add(180 * 24 * time.Hour)}
 	req.AddCookie(&cookie)
 
+	// cookie := http.Cookie{Name: "BDUSS", Value: b.Bduss, Expires: time.Now().Add(180 * 24 * time.Hour)}
+	// req, err := http.NewRequest("GET", define.GetBaiduBaseInfo, nil)
+	// if err != nil {
+	// 	return fmt.Errorf("创建请求失败: %s", err)
+	// }
+	// req.AddCookie(&cookie)
+
 	// 先获取基本数据
-	resp, err := requester.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("获取百度账号的基本信息出错: %s", err)
 	}
@@ -124,6 +134,11 @@ func (b *BaiduUser) fetcBaseInfo() error {
 	if err != nil {
 		return fmt.Errorf("接口返回消息错误: %s", err)
 	}
+
+	if errCode == -6 {
+		return fmt.Errorf("bduss错误: %d, 消息: %s", errCode, errMsg)
+	}
+
 	if errCode != 0 {
 		return fmt.Errorf("请求获取百度账号数据失败: %d, 消息: %s", errCode, errMsg)
 	}
@@ -149,7 +164,7 @@ func (b *BaiduUser) getVideoList(num int, mode GetMode) ([]*DouyinVideo, error) 
 	videoList := make([]*DouyinVideo, 0)
 	for {
 		tmpList := make([]*DouyinVideo, 0)
-		subDB := DB.Model(&DouyinVideo{}).Where("douyin_url = ? and state = ?", b.DouyinURL, WaitUpload).Order("create_time desc")
+		subDB := DB.Model(&DouyinVideo{}).Where("douyin_uid = ? and state = ?", b.DouyinUID, WaitUpload).Order("create_time desc")
 		if mode == GetModeNewly {
 			subDB.Where("date(create_time) >= current_date - 1")
 		}
@@ -222,7 +237,7 @@ func (b *BaiduUser) pulishTask(uploadVideoList []*DouyinVideo) {
 
 		statisticList = append(statisticList, &Statistic{
 			BaiduUID:  b.UID,
-			DouyinURL: b.DouyinURL,
+			DouyinUID: b.DouyinUID,
 			AwemeID:   v.AwemeID,
 			State:     WaitUpload,
 		})
