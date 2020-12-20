@@ -102,9 +102,13 @@ func BindAdd(c *gin.Context) {
 
 func BaiduUserList(c *gin.Context) {
 	param := &struct {
-		UID   string `json:"uid,omitempty"`
-		Page  int    `json:"page"`
-		Limit int    `json:"limit"`
+		UID       string `json:"uid,omitempty"`
+		DouyinUID string `json:"douyinUID,omitempty"`
+		DouyinURL string `json:"douyinURL,omitempty"`
+		BDUSS     string `json:"bduss,omitempty"`
+		Nickname  string `json:"nickname,omitempty"`
+		Page      int    `json:"page"`
+		Limit     int    `json:"limit"`
 	}{Page: 1, Limit: 10}
 
 	err := c.BindJSON(param)
@@ -115,7 +119,22 @@ func BaiduUserList(c *gin.Context) {
 
 	users := make([]*BaiduUser, 0)
 	totalNum := int64(0)
-	result := DB.Model(&BaiduUser{}).Count(&totalNum).Offset((param.Page - 1) * param.Limit).Limit(param.Limit).Order("create_time desc").Find(&users)
+	subDB := DB.Model(&BaiduUser{}).
+		Count(&totalNum).
+		Offset((param.Page - 1) * param.Limit).
+		Limit(param.Limit).
+		Order("create_time desc")
+	if param.DouyinUID != "" {
+		subDB.Where("douyin_uid = ?", param.DouyinUID)
+	}
+	if param.DouyinURL != "" {
+		subDB.Where("douyin_url = ?", param.DouyinURL)
+	}
+	if param.Nickname != "" {
+		subDB.Where("nickname like ?", "%"+param.Nickname+"%")
+	}
+
+	result := subDB.Find(&users)
 	if result.Error != nil {
 		c.JSON(http.StatusOK, gin.H{"code": define.QueryDataErr})
 		return

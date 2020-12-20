@@ -111,7 +111,7 @@ type APIDouyinVideo struct {
 	} `json:"video"`
 }
 
-func GetDouyinVideo(secUID string, cursor int64) ([]*APIDouyinVideo, int64, error) {
+func GetDouyinVideo(secUID, secSig string, cursor int64) ([]*APIDouyinVideo, int64, error) {
 	if secUID == "" {
 		return nil, 0, errors.New("secUID不能为空")
 	}
@@ -125,7 +125,7 @@ func GetDouyinVideo(secUID string, cursor int64) ([]*APIDouyinVideo, int64, erro
 	}{}
 
 	tryTimes := 0
-	url := fmt.Sprintf("%s?sec_uid=%s&count=20&max_cursor=%d&aid=1128&_signature=&dytk=", define.GetVideoList, secUID, cursor)
+	url := fmt.Sprintf("%s?sec_uid=%s&count=21&max_cursor=%d&aid=1128&_signature=%s&dytk=", define.GetVideoList, secUID, cursor, secSig)
 
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
@@ -171,7 +171,8 @@ func GetDouyinVideo(secUID string, cursor int64) ([]*APIDouyinVideo, int64, erro
 		hasmore = data.HasMore.(bool)
 	}
 
-	if hasmore && data.MaxCursor != 0 {
+	//抖音那边 这几个字段都正常时都有可能是已经读完了 has_more: true max_cursor: 1598057927000 min_cursor: 1600132116000 status_code: 0
+	if hasmore && data.MaxCursor != 0 && len(data.AwemeList) != 0 {
 		maxCursor = data.MaxCursor
 	}
 

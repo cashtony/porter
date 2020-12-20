@@ -265,11 +265,6 @@ func (b *BaiduClient) doUploadPart(data io.Reader, partNum int, mediaID, uploadI
 	h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="file"; filename="%d.mp4"`, partNum))
 	h.Set("Content-Type", "application/octet-stream")
 
-	// fileWriter, err := bodyWriter.CreateFormFile("file", filepath)
-	// if err != nil {
-	// 	return "", fmt.Errorf("创建multipart失败:%s", err)
-	// }
-
 	fileWriter, err := bodyWriter.CreatePart(h)
 	if err != nil {
 		return "", fmt.Errorf("创建multipart失败:%s", err)

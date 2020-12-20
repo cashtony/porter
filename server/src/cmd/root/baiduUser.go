@@ -16,8 +16,8 @@ import (
 
 type BaiduUser struct {
 	UID            string          `gorm:"primaryKey" json:"uid"`
-	Username       string          `json:"userName"` // 账户名称
-	Nickname       string          `json:"nickName"`
+	Username       string          `json:"username"` // 账户名称
+	Nickname       string          `json:"nickname"`
 	Bduss          string          `gorm:"primaryKey" json:"dbuss"`
 	FansNum        int             `json:"fansNum"`
 	Diamond        int             `json:"diamond"`

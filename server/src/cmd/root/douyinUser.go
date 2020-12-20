@@ -36,7 +36,7 @@ func (d *DouyinUser) initVideoList() {
 	secUID := api.GetSecID(d.ShareURL)
 	for {
 		wlog.Debugf("开始解析[%s]第[%d]页视频 \n", d.Nickname, page)
-		apiVideoList, newCursor, err := api.GetDouyinVideo(secUID, nextCursor)
+		apiVideoList, newCursor, err := api.GetDouyinVideo(secUID, "", nextCursor)
 		if err != nil {
 			wlog.Error("获取单页视频发生错误:", err)
 			return
@@ -66,79 +66,6 @@ func (d *DouyinUser) initVideoList() {
 	wlog.Debugf("用户[%s]视频解析完毕 \n", d.Nickname)
 }
 
-// OnePageVideo 接收一个游标,返回是否有下一页以及相关游标
-// func (u *DouyinUser) OnePageVideo(cursor int64) ([]*DouyinVideo, bool, int64, error) {
-// 	videoList := make([]*DouyinVideo, 0)
-// 	var (
-// 		nextCursor int64 = 0
-// 		hasMore          = false
-// 		tryTimes         = 0
-// 	)
-
-// 	for {
-// 		time.Sleep(100 * time.Millisecond)
-// 		if tryTimes > 500 {
-// 			wlog.Infof("[警告]获取视频列表尝试超过%d次仍然没有获得数据", tryTimes)
-// 			tryTimes = 0
-// 		}
-
-// 		url := fmt.Sprintf("%s?user_id=%s&sec_uid=%s&count=20&max_cursor=%d&aid=1128&_signature=&dytk=", define.GetVideoList, u.UID, u.secUID, cursor)
-// 		resp, err := requester.DefaultClient.Req("GET", url, nil, nil)
-// 		if err != nil {
-// 			tryTimes++
-// 			continue
-// 		}
-
-// 		if resp.Header.Get("status_code") == "" {
-// 			resp.Body.Close()
-// 			tryTimes++
-// 			continue
-// 		}
-
-// 		defer resp.Body.Close()
-
-// 		j, err := simplejson.NewFromReader(resp.Body)
-// 		if err != nil {
-// 			return videoList, false, 0, fmt.Errorf("json数据解析失败:%s", err)
-// 		}
-
-// 		for _, item := range j.Get("aweme_list").MustArray() {
-// 			itemJSON := item.(map[string]interface{})
-// 			video := &DouyinVideo{
-// 				DouyinURL: u.ShareURL,
-// 				AwemeID:   itemJSON["aweme_id"].(string),
-// 				Desc:      itemJSON["desc"].(string),
-// 			}
-
-// 			//获取视频上传时间
-// 			videoExtraInfo, _ := getVideoExtraInfo(video.AwemeID)
-// 			video.CreateTime = videoExtraInfo.CreateTime
-// 			video.VID = videoExtraInfo.VID
-
-// 			videoList = append(videoList, video)
-// 		}
-
-// 		hasMore, err = j.Get("has_more").Bool()
-// 		if err != nil {
-// 			wlog.Error("获取has_more字段错误", err)
-// 		}
-// 		if hasMore {
-// 			nextCursor, err = j.Get("max_cursor").Int64()
-// 			if err != nil {
-// 				wlog.Error("获取max_cursor字段错误", err)
-// 			}
-// 		}
-
-// 		if hasMore && nextCursor == 0 {
-// 			hasMore = false
-// 		}
-
-// 		break
-// 	}
-
-// 	return videoList, hasMore, nextCursor, nil
-// }
-
 func (d *DouyinUser) Store() {
 	DB.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "uid"}},
@@ -165,7 +92,7 @@ func (d *DouyinUser) Update() {
 		wlog.Errorf("用户[%s][%s]secUID为空:%s \n", d.UID, d.Nickname)
 		return
 	}
-	apiVideoList, _, err := api.GetDouyinVideo(d.secUID, 0)
+	apiVideoList, _, err := api.GetDouyinVideo(d.secUID, "", 0)
 	if err != nil {
 		wlog.Errorf("用户[%s][%s]获取视频列表失败:%s \n", d.UID, d.Nickname, err)
 		return

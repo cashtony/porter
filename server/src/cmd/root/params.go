@@ -1,6 +1,6 @@
 package main
 
 var (
-	MaxUploadNum = 12
-	MinUploadNum = 8
+	MaxUploadNum = 5
+	MinUploadNum = 2
 )
