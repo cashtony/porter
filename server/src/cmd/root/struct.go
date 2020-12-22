@@ -2,21 +2,6 @@ package main
 
 import "time"
 
-type DouyinVideo struct {
-	AwemeID    string `gorm:"primaryKey"`
-	DouyinUID  string // 抖音UID
-	Desc       string // 视频描述
-	VID        string // 用于下载时填充链接
-	CreateTime time.Time
-	Duration   int
-	State      int // 0未搬运 1:已搬运
-}
-
-type DouyinVideoExtraInfo struct {
-	CreateTime time.Time
-	VID        string
-}
-
 type Account struct {
 	UID        int    `json:"uid" gorm:"PRIMARY_KEY;AUTO_INCREMENT"`
 	Name       string `json:"name"`

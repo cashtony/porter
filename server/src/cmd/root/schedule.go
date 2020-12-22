@@ -1,7 +1,9 @@
 package main
 
 import (
-	"porter/api"
+	"encoding/json"
+	"porter/define"
+	"porter/task"
 	"porter/wlog"
 	"sync"
 )
@@ -36,11 +38,6 @@ func DailyUpload() {
 
 	isUpdading = true
 
-	// 更新抖音用户视频数据
-	// wlog.Info("开始更新抖音用户数据")
-	// UpdateDouyinUsers()
-	// wlog.Info("抖音用户数据更新完毕")
-	// 更新百度用户数据(主要是钻石)
 	wlog.Info("开始更新百度用户数据")
 	DailyUpdateBaiduUsers()
 	wlog.Info("百度用户数据更新完毕")
@@ -54,6 +51,34 @@ func DailyUpload() {
 	wlog.Info("更新完毕")
 }
 
+func ScheduleUpdate() {
+	// todo 查看topic长度, 如果不为0说明之前的更新任务没处理完就不进行更新
+
+	bdUsers := make([]*TableBaiduUser, 0)
+	result := DB.Model(&TableBaiduUser{}).Where("douyin_url != ''").Find(&bdUsers)
+	if result.Error != nil {
+		wlog.Error("获取百度用户时发生错误:", result.Error)
+		return
+	}
+
+	for _, u := range bdUsers {
+		// 发布任务
+		t := &task.TaskParseVideo{
+			Type:     define.ParseVideoTypeOnePage,
+			ShareURL: u.DouyinURL,
+		}
+		data, err := json.Marshal(t)
+		if err != nil {
+			wlog.Error("任务解析失败:", err)
+			continue
+		}
+
+		if err := Q.Publish(define.TaskParseVideoTopic, data); err != nil {
+			wlog.Error("视频解析任务发布失败:", err)
+		}
+	}
+}
+
 func ScheduleUpload(utype UploadType) {
 	// 取出适合数据的百度用户
 	defer func() {
@@ -63,9 +88,8 @@ func ScheduleUpload(utype UploadType) {
 	}()
 	wg := sync.WaitGroup{}
 
-	// 开始上传视频
-	bdUsers := make([]*BaiduUser, 0)
-	result := DB.Model(&BaiduUser{}).Where("douyin_url != ''").Find(&bdUsers)
+	bdUsers := make([]*TableBaiduUser, 0)
+	result := DB.Model(&TableBaiduUser{}).Where("douyin_url != ''").Find(&bdUsers)
 	if result.Error != nil {
 		wlog.Error("获取百度用户时发生错误:", result.Error)
 		return
@@ -76,21 +100,7 @@ func ScheduleUpload(utype UploadType) {
 	for _, bduser := range bdUsers {
 		ThreadTraffic <- 1
 
-		go func(u *BaiduUser) {
-			// 更新绑定的抖音用户最新视频
-			apiDouyinUser, err := api.NewAPIDouyinUser(u.DouyinURL)
-			if err != nil {
-				wlog.Error("获取抖音用户数据失败:", err)
-				<-ThreadTraffic
-				return
-			}
-			duser := &DouyinUser{
-				UID:      apiDouyinUser.UID,
-				ShareURL: u.DouyinURL,
-				Nickname: apiDouyinUser.Nickname,
-				secUID:   apiDouyinUser.SecUID,
-			}
-			duser.Update()
+		go func(u *TableBaiduUser) {
 			if u.Status == int(BaiduUserStatusNormal) {
 				u.UploadVideo(utype)
 			}
@@ -105,77 +115,6 @@ func ScheduleUpload(utype UploadType) {
 
 }
 
-// func UpdateDouyinUsers() {
-// 	defer func() {
-// 		if r := recover(); r != nil {
-// 			wlog.Error("任务panic", r)
-// 		}
-// 	}()
-// 	wg := sync.WaitGroup{}
-
-// 	users := make([]*DouyinUser, 0)
-// 	result := DB.Find(&users)
-// 	if result.Error != nil {
-// 		wlog.Error("定时任务获取数据库数据时发生错误:", result.Error)
-// 		return
-// 	}
-
-// 	wlog.Info("本次更新的用户数量为:", len(users))
-// 	wg.Add(len(users))
-
-// 	for _, user := range users {
-// 		ThreadTraffic <- 1
-// 		go func(u *DouyinUser) {
-// 			// 获取最新一页视频
-// 			u.secUID = api.GetSecID(u.ShareURL)
-// 			wlog.Debugf("开始更新用户[%s][%s]数据:", u.UID, u.Nickname)
-// 			u.Update()
-
-// 			wg.Done()
-// 			<-ThreadTraffic
-// 		}(user)
-
-// 	}
-
-// 	wg.Wait()
-// }
-
 func DailyUpdateBaiduUsers() {
 
 }
-
-// func BaiduUsersUpload(uType UploadType) {
-// 	defer func() {
-// 		if r := recover(); r != nil {
-// 			wlog.Error("任务panic", r)
-// 		}
-// 	}()
-// 	wg := sync.WaitGroup{}
-
-// 	// 开始上传视频
-// 	bdUsers := make([]*BaiduUser, 0)
-// 	subDB := DB.Model(&BaiduUser{}).Where("douyin_url != ''")
-// 	if uType == UploadTypeDaily {
-// 		subDB = subDB.Where("last_upload_time < current_date")
-// 	}
-// 	subDB.Find(&bdUsers)
-// 	if subDB.Error != nil {
-// 		wlog.Error("定时任务获取百度用户时发生错误:", subDB.Error)
-// 		return
-// 	}
-// 	wlog.Info("开始上传: 本次要上传的用户数量为:", len(bdUsers))
-// 	wg.Add(len(bdUsers))
-
-// 	for _, bduser := range bdUsers {
-// 		ThreadTraffic <- 1
-
-// 		go func(u *BaiduUser) {
-// 			u.UploadVideo(uType)
-
-// 			wg.Done()
-// 			<-ThreadTraffic
-// 		}(bduser)
-// 	}
-
-// 	wg.Wait()
-// }

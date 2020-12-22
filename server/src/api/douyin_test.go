@@ -1,7 +1,6 @@
 package api
 
 import (
-	"fmt"
 	"testing"
 )
 
@@ -18,6 +17,23 @@ func TestNewApiDouyinUser(t *testing.T) {
 	if d.AvatarMedium.URLList[0] == "" {
 		t.Error("头像为空")
 	}
+}
 
-	fmt.Printf("抖音用户数据为: %+v \n", d)
+func TestGetVideoExtraInfo(t *testing.T) {
+	v, err := GetVideoExtraInfo("6834090710124236043")
+	if err != nil {
+		t.Error(err)
+	}
+
+	if len(v.ItemList) == 0 {
+		t.Error("获取的长度错误")
+	}
+
+	if v.ItemList[0].CreateTime == 0 {
+		t.Error("时间获取失败")
+	}
+
+	if v.ItemList[0].Video.Vid == "" {
+		t.Error("vid获取失败")
+	}
 }

@@ -312,6 +312,7 @@ export default {
       this.listQuery.douyinUID = ''
       this.listQuery.douyinURL = ''
       this.listQuery.nickname = ''
+      this.listQuery.page = 1
 
       switch (this.searchType) {
         case 'douyinUID':

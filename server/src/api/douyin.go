@@ -104,7 +104,7 @@ type APIDouyinVideo struct {
 		Duration int    `json:"duration"`
 		Height   int    `json:"height"`
 		Width    int    `json:"width"`
-		VID      string `json:"vid"`
+		Vid      string `json:"vid"`
 		PlayAddr struct {
 			URLList []string `json:"url_list"`
 		} `json:"play_addr"`
@@ -132,15 +132,16 @@ func GetDouyinVideo(secUID, secSig string, cursor int64) ([]*APIDouyinVideo, int
 		return nil, 0, err
 	}
 	req.Header.Set("User-Agent", requester.UserAgent)
+	client := &http.Client{}
 
 	for {
-		time.Sleep(500 * time.Millisecond)
+		time.Sleep(100 * time.Millisecond)
 
 		if tryTimes > 500 {
 			wlog.Infof("[警告]获取视频列表尝试超过%d次仍然没有获得数据", tryTimes)
 			tryTimes = 0
 		}
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := client.Do(req)
 		if err != nil {
 			tryTimes++
 			continue
@@ -178,4 +179,54 @@ func GetDouyinVideo(secUID, secSig string, cursor int64) ([]*APIDouyinVideo, int
 
 	return data.AwemeList, maxCursor, nil
 
+}
+
+type APIDouyinVideoExraInfo struct {
+	ItemList []struct {
+		CreateTime int64 `json:"create_time"`
+		Video      struct {
+			Vid string `json:"vid"`
+		} `json:"video"`
+	} `json:"item_list"`
+}
+
+func GetVideoExtraInfo(awemeid string) (*APIDouyinVideoExraInfo, error) {
+	url := fmt.Sprintf("%s?item_ids=%s", define.GetVideoURI, awemeid)
+
+	tryTimes := 10
+	var resp *http.Response
+	var err error
+	client := &http.Client{}
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("获取secid时创建请求失败:%s", err)
+	}
+	req.Header.Add("User-Agent", requester.UserAgent)
+
+	for tryTimes > 0 {
+		resp, err = client.Do(req)
+		if err != nil {
+			tryTimes--
+			// 设置间隔为了防止两次调用时间间隔过短导致握手失败
+			time.Sleep(200 * time.Millisecond)
+			continue
+		}
+		break
+	}
+	if resp == nil {
+		return nil, fmt.Errorf("[%s]请求视频信息失败: 超过重试次数", awemeid)
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	info := &APIDouyinVideoExraInfo{}
+	if err := json.Unmarshal(body, info); err != nil {
+		return info, fmt.Errorf("[%s]数据解析失败:%s", awemeid, err)
+	}
+
+	return info, nil
 }

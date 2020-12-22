@@ -40,6 +40,9 @@ var (
 	TaskFinishedTopic = "TaskFinished"
 
 	TaskChangeInfoTopic = "TaskChangeInfo"
+
+	TaskParseVideoTopic       = "TaskParseVideo"
+	TaskParseVideoResultTopic = "TaskParseVideoResult"
 )
 
 const (
@@ -55,4 +58,11 @@ const (
 	TB
 	// PB petabyte
 	PB
+)
+
+type ParseVideoType int
+
+const (
+	ParseVideoTypeOnePage ParseVideoType = iota + 1
+	ParseVideoTypeAll
 )

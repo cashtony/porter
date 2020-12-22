@@ -20,9 +20,9 @@ func DouyinUserList(c *gin.Context) {
 		return
 	}
 
-	users := make([]*DouyinUser, 0)
+	users := make([]*TableDouyinUser, 0)
 	totalNum := int64(0)
-	result := DB.Model(&DouyinUser{}).Count(&totalNum).Offset((param.Page - 1) * param.Limit).Limit(param.Limit).Order("create_time desc").Find(&users)
+	result := DB.Model(&TableDouyinUser{}).Count(&totalNum).Offset((param.Page - 1) * param.Limit).Limit(param.Limit).Order("create_time desc").Find(&users)
 	if result.Error != nil {
 		c.JSON(http.StatusOK, gin.H{"code": define.QueryDataErr})
 		return

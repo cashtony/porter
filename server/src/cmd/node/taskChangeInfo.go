@@ -2,7 +2,7 @@ package main
 
 import (
 	"encoding/json"
-	"porter/define"
+	"porter/task"
 	"porter/wlog"
 
 	"github.com/nsqio/go-nsq"
@@ -10,21 +10,21 @@ import (
 
 type TaskChangeInfoHandler struct{}
 
-func (t *TaskChangeInfoHandler) HandleMessage(m *nsq.Message) error {
+func (*TaskChangeInfoHandler) HandleMessage(m *nsq.Message) error {
 	if len(m.Body) == 0 {
 		return nil
 	}
 
-	task := &define.TaskChangeInfo{}
-	err := json.Unmarshal(m.Body, task)
+	changeInfo := &task.TaskChangeInfo{}
+	err := json.Unmarshal(m.Body, changeInfo)
 	if err != nil {
 		wlog.Error("任务解析失败:", err)
 		return nil
 	}
 
-	wlog.Infof("接收到复制信息任务, 数量:%d", len(task.List))
+	wlog.Infof("接收到复制信息任务, 数量:%d", len(changeInfo.List))
 
-	for _, item := range task.List {
+	for _, item := range changeInfo.List {
 		ThreadTraffic <- 1
 		go excuteChangeInfo(item)
 	}
@@ -32,7 +32,7 @@ func (t *TaskChangeInfoHandler) HandleMessage(m *nsq.Message) error {
 	return nil
 }
 
-func excuteChangeInfo(item define.TaskChangeInfoItem) {
+func excuteChangeInfo(item task.TaskChangeInfoItem) {
 	defer func() {
 		<-ThreadTraffic
 	}()

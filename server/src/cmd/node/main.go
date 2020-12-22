@@ -37,6 +37,8 @@ func main() {
 	// 从消息队列中获取任务
 	uploadComsumer := queue.InitComsumer(define.TaskPushTopic, &TaskUploadHandler{})
 	changeInfoComsumer := queue.InitComsumer(define.TaskChangeInfoTopic, &TaskChangeInfoHandler{})
+	parseVideoComsumer := queue.InitComsumer(define.TaskParseVideoTopic, &TaskParseVideoHandler{})
+
 	Q = queue.InitProducer()
 	wlog.Info("当前设定Thread数量为:", *Thread)
 	wlog.Info("等待新任务中...")
@@ -47,4 +49,5 @@ func main() {
 
 	uploadComsumer.Stop()
 	changeInfoComsumer.Stop()
+	parseVideoComsumer.Stop()
 }

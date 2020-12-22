@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"math/rand"
 	"net/http"
+	"porter/api"
 	"porter/define"
 	"porter/requester"
+	"porter/task"
 	"porter/wlog"
 	"time"
 
@@ -14,7 +16,7 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-type BaiduUser struct {
+type TableBaiduUser struct {
 	UID            string          `gorm:"primaryKey" json:"uid"`
 	Username       string          `json:"username"` // 账户名称
 	Nickname       string          `json:"nickname"`
@@ -29,22 +31,11 @@ type BaiduUser struct {
 	Status         int             `json:"status" gorm:"default:1"` // 1:正常, 0:不搬运视频
 }
 
-func NewBaiduUser(bduss string) (*BaiduUser, error) {
-	b := &BaiduUser{Bduss: bduss}
-	err := b.fetcBaseInfo()
-	if err != nil {
-		return nil, fmt.Errorf("获取基本百度用户基本数据失败:%s", err)
-	}
-
-	err = b.fetchQuanminInfo()
-	if err != nil {
-		return nil, fmt.Errorf("获取全民用户基本数据失败:%s", err)
-	}
-
-	return b, nil
+func (TableBaiduUser) TableName() string {
+	return "baidu_users"
 }
 
-func (b *BaiduUser) fetchQuanminInfo() error {
+func (b *TableBaiduUser) fetchQuanminInfo() error {
 	client := &http.Client{}
 	req, err := http.NewRequest("POST", define.GetQuanminInfoV2, nil)
 	if err != nil {
@@ -98,7 +89,7 @@ func (b *BaiduUser) fetchQuanminInfo() error {
 	return nil
 }
 
-func (b *BaiduUser) fetcBaseInfo() error {
+func (b *TableBaiduUser) fetcBaseInfo() error {
 	client := &http.Client{}
 	req, err := http.NewRequest(http.MethodGet, define.GetBaiduBaseInfo, nil)
 	if err != nil {
@@ -158,13 +149,13 @@ func (b *BaiduUser) fetcBaseInfo() error {
 	return nil
 }
 
-func (b *BaiduUser) getVideoList(num int, mode GetMode) ([]*DouyinVideo, error) {
+func (b *TableBaiduUser) getVideoList(num int, mode GetMode) ([]*define.TableDouyinVideo, error) {
 	page, limit := 1, 20
 
-	videoList := make([]*DouyinVideo, 0)
+	videoList := make([]*define.TableDouyinVideo, 0)
 	for {
-		tmpList := make([]*DouyinVideo, 0)
-		subDB := DB.Model(&DouyinVideo{}).Where("douyin_uid = ? and state = ?", b.DouyinUID, WaitUpload).Order("create_time desc")
+		tmpList := make([]*define.TableDouyinVideo, 0)
+		subDB := DB.Model(&define.TableDouyinVideo{}).Where("douyin_uid = ? and state = ?", b.DouyinUID, WaitUpload).Order("create_time desc")
 		if mode == GetModeNewly {
 			subDB.Where("date(create_time) >= current_date - 1")
 		}
@@ -181,11 +172,17 @@ func (b *BaiduUser) getVideoList(num int, mode GetMode) ([]*DouyinVideo, error) 
 
 		for _, v := range tmpList {
 			// 检测视频是否还有效
-			info, err := getVideoExtraInfo(v.AwemeID)
+			info, err := api.GetVideoExtraInfo(v.AwemeID)
 			if err != nil {
 				continue
 			}
-			v.VID = info.VID
+			if len(info.ItemList) == 0 {
+				// 数据库中记录
+				DB.Model(&define.TableDouyinVideo{}).Where("aweme_id = ?", v.AwemeID).Update("state", 2)
+				continue
+			}
+			// 之前有些视频vid是没有储存的,所以需要在这里获取一次
+			v.Vid = info.ItemList[0].Video.Vid
 
 			videoList = append(videoList, v)
 			if len(videoList) >= num {
@@ -195,9 +192,8 @@ func (b *BaiduUser) getVideoList(num int, mode GetMode) ([]*DouyinVideo, error) 
 	}
 }
 
-func (b *BaiduUser) UploadVideo(utype UploadType) {
-	// 上传视频(从未上传的视频中挑选8-12条)
-	uploadVideoList := make([]*DouyinVideo, 0)
+func (b *TableBaiduUser) UploadVideo(utype UploadType) {
+	uploadVideoList := make([]*define.TableDouyinVideo, 0)
 	num := rand.Intn(MaxUploadNum-MinUploadNum) + MinUploadNum
 	uploadVideoList, err := b.getVideoList(num, GetModeNewly)
 	if err != nil {
@@ -223,16 +219,16 @@ func (b *BaiduUser) UploadVideo(utype UploadType) {
 	b.pulishTask(uploadVideoList)
 }
 
-func (b *BaiduUser) pulishTask(uploadVideoList []*DouyinVideo) {
+func (b *TableBaiduUser) pulishTask(uploadVideoList []*define.TableDouyinVideo) {
 	// 查找视频下载url
-	taskVideoList := make([]*define.TaskUploadVideo, 0)
+	taskVideoList := make([]*task.TaskUploadVideo, 0)
 	statisticList := make([]*Statistic, 0)
 
 	for _, v := range uploadVideoList {
-		taskVideoList = append(taskVideoList, &define.TaskUploadVideo{
+		taskVideoList = append(taskVideoList, &task.TaskUploadVideo{
 			AwemeID:     v.AwemeID,
 			Desc:        v.Desc,
-			DownloadURL: fmt.Sprintf("%s/?video_id=%s&ratio=720p&line=0", define.GetVideoDownload, v.VID),
+			DownloadURL: fmt.Sprintf("%s/?video_id=%s&ratio=720p&line=0", define.GetVideoDownload, v.Vid),
 		})
 
 		statisticList = append(statisticList, &Statistic{
@@ -250,7 +246,7 @@ func (b *BaiduUser) pulishTask(uploadVideoList []*DouyinVideo) {
 
 	// 封装成task投递到任务队列中
 	wlog.Debugf("开始投放用户[%s][%s]任务, 数量:[%d] \n", b.UID, b.Nickname, len(taskVideoList))
-	t := &define.TaskUpload{
+	t := &task.TaskUpload{
 		Bduss:    b.Bduss,
 		Videos:   taskVideoList,
 		Nickname: b.Nickname,
@@ -278,7 +274,7 @@ func (b *BaiduUser) pulishTask(uploadVideoList []*DouyinVideo) {
 	}
 }
 
-func (b *BaiduUser) Store() {
+func (b *TableBaiduUser) Store() {
 	DB.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "uid"}},
 		UpdateAll: true,
@@ -287,4 +283,19 @@ func (b *BaiduUser) Store() {
 		wlog.Errorf("用户[%s][%s]存入数据库失败:%s \n", b.UID, b.Nickname, DB.Error)
 		return
 	}
+}
+
+func NewBaiduUser(bduss string) (*TableBaiduUser, error) {
+	b := &TableBaiduUser{Bduss: bduss}
+	err := b.fetcBaseInfo()
+	if err != nil {
+		return nil, fmt.Errorf("获取基本百度用户基本数据失败:%s", err)
+	}
+
+	err = b.fetchQuanminInfo()
+	if err != nil {
+		return nil, fmt.Errorf("获取全民用户基本数据失败:%s", err)
+	}
+
+	return b, nil
 }

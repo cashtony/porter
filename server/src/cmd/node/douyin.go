@@ -12,10 +12,14 @@ import (
 var re, _ = regexp.Compile(`[\*\\:?"/<>|]`)
 
 func download(dirName, fileName, downloadURL string) (string, error) {
-	client := requester.NewHTTPClient()
-	client.SetUserAgent(requester.MobileUserAgent)
+	req, err := http.NewRequest(http.MethodGet, downloadURL, nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("User-Agent", requester.UserAgent)
 
-	resp, err := client.Req("GET", downloadURL, nil, nil)
+	client := &http.Client{}
+	resp, err := client.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("下载的请求发生错误:%s", err)
 	}

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"porter/api"
 	"porter/define"
+	"porter/task"
 	"porter/wlog"
 	"strings"
 	"time"
@@ -33,13 +34,12 @@ func BindAdd(c *gin.Context) {
 
 	// 解析成单行
 	lines := strings.Split(cleanContent, "\n")
-	sucNum, total := 0, 0
+
 	for _, line := range lines {
 		if line == "" {
 			continue
 		}
 
-		total++
 		accounts := strings.Split(line, "\t")
 		bduss, douyinShare := accounts[0], accounts[1]
 		errcode := 0
@@ -50,7 +50,7 @@ func BindAdd(c *gin.Context) {
 		}
 
 		num := int64(0)
-		result := DB.Model(&BaiduUser{}).Where("douyin_uid = ?", apiDouyinUser.UID).Count(&num)
+		result := DB.Model(&TableBaiduUser{}).Where("douyin_uid = ?", apiDouyinUser.UID).Count(&num)
 		if result.Error != nil {
 			wlog.Errorf("新增账号时检测重复抖音号[%s]时出现问题:%s", douyinShare, result.Error)
 			errcode = BindErrSqlQuery
@@ -76,7 +76,7 @@ func BindAdd(c *gin.Context) {
 		bd.DouyinURL = douyinShare
 		bd.Status = int(BaiduUserStatusNormal)
 
-		tableDouyinUser := &DouyinUser{
+		tableDouyinUser := &TableDouyinUser{
 			UID:        apiDouyinUser.UID,
 			UniqueUID:  apiDouyinUser.UniqueUID,
 			Nickname:   apiDouyinUser.Nickname,
@@ -87,17 +87,30 @@ func BindAdd(c *gin.Context) {
 		bd.Store()
 		tableDouyinUser.Store()
 
-		ThreadTraffic <- 1
-		go func() {
-			tableDouyinUser.initVideoList()
-			// bd.UploadVideo(UploadTypeDaily)
-			<-ThreadTraffic
-		}()
+		// 发布任务
+		t := &task.TaskParseVideo{
+			Type:     define.ParseVideoTypeAll,
+			ShareURL: douyinShare,
+		}
+		data, err := json.Marshal(t)
+		if err != nil {
+			wlog.Error("任务解析失败:", err)
+			continue
+		}
 
-		sucNum++
+		if err := Q.Publish(define.TaskParseVideoTopic, data); err != nil {
+			wlog.Error("视频解析任务发布失败:", err)
+		}
+
+		// ThreadTraffic <- 1
+		// go func() {
+		// 	tableDouyinUser.initVideoList()
+		// 	// bd.UploadVideo(UploadTypeDaily)
+		// 	<-ThreadTraffic
+		// }()
 	}
 
-	c.JSON(http.StatusOK, gin.H{"code": define.Success, "total": total, "sucNum": sucNum})
+	c.JSON(http.StatusOK, gin.H{"code": define.Success})
 }
 
 func BaiduUserList(c *gin.Context) {
@@ -117,13 +130,9 @@ func BaiduUserList(c *gin.Context) {
 		return
 	}
 
-	users := make([]*BaiduUser, 0)
+	users := make([]*TableBaiduUser, 0)
 	totalNum := int64(0)
-	subDB := DB.Model(&BaiduUser{}).
-		Count(&totalNum).
-		Offset((param.Page - 1) * param.Limit).
-		Limit(param.Limit).
-		Order("create_time desc")
+	subDB := DB.Model(&TableBaiduUser{})
 	if param.DouyinUID != "" {
 		subDB.Where("douyin_uid = ?", param.DouyinUID)
 	}
@@ -134,7 +143,11 @@ func BaiduUserList(c *gin.Context) {
 		subDB.Where("nickname like ?", "%"+param.Nickname+"%")
 	}
 
-	result := subDB.Find(&users)
+	result := subDB.
+		Count(&totalNum).
+		Offset((param.Page - 1) * param.Limit).
+		Limit(param.Limit).
+		Order("create_time desc").Find(&users)
 	if result.Error != nil {
 		c.JSON(http.StatusOK, gin.H{"code": define.QueryDataErr})
 		return
@@ -164,7 +177,7 @@ func BaiduUserEdit(c *gin.Context) {
 		return
 	}
 	num := int64(0)
-	if result := DB.Model(&BaiduUser{}).Where("douyin_uid = ?", douyinUser.UID).Count(&num); result.Error != nil {
+	if result := DB.Model(&TableBaiduUser{}).Where("douyin_uid = ?", douyinUser.UID).Count(&num); result.Error != nil {
 		c.JSON(http.StatusOK, gin.H{"code": define.QueryDataErr, "message": "数据查找错误,请稍后再试"})
 		return
 	}
@@ -172,7 +185,7 @@ func BaiduUserEdit(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": define.AlreadyBind, "message": "该抖音账号已经绑定其他百度账号"})
 		return
 	}
-	if result := DB.Model(&BaiduUser{}).Where("uid = ?", param.UID).Updates(BaiduUser{DouyinUID: douyinUser.UID, DouyinURL: param.DouyinURL}); result.Error != nil {
+	if result := DB.Model(&TableBaiduUser{}).Where("uid = ?", param.UID).Updates(TableBaiduUser{DouyinUID: douyinUser.UID, DouyinURL: param.DouyinURL}); result.Error != nil {
 		c.JSON(http.StatusOK, gin.H{"code": define.CannotBind})
 		return
 	}
@@ -193,8 +206,8 @@ func BaiduUserUpdate(c *gin.Context) {
 		return
 	}
 
-	usersList := make([]*BaiduUser, 0)
-	subDB := DB.Model(&BaiduUser{})
+	usersList := make([]*TableBaiduUser, 0)
+	subDB := DB.Model(&TableBaiduUser{})
 	if param.UID != "" {
 		subDB.Where("uid = ?", param.UID)
 	}
@@ -207,7 +220,7 @@ func BaiduUserUpdate(c *gin.Context) {
 			wlog.Errorf("获取[%s][%s]全民视频用户数据时错误:%s", u.UID, u.Nickname, err)
 			continue
 		}
-		DB.Model(&BaiduUser{}).Where("uid = ?", u.UID).Updates(&BaiduUser{Diamond: u.Diamond})
+		DB.Model(&TableBaiduUser{}).Where("uid = ?", u.UID).Updates(&TableBaiduUser{Diamond: u.Diamond, Nickname: u.Nickname, FansNum: u.FansNum})
 		time.Sleep(100 * time.Millisecond)
 	}
 
@@ -232,7 +245,7 @@ func SyncBaiduUser(c *gin.Context) {
 	}
 
 	items := strings.Split(param.Content, "\n")
-	list := make([]define.TaskChangeInfoItem, 0)
+	list := make([]task.TaskChangeInfoItem, 0)
 
 	for _, value := range items {
 		if value == "" {
@@ -241,7 +254,7 @@ func SyncBaiduUser(c *gin.Context) {
 		value = strings.TrimSpace(value)
 		item := strings.Split(value, "\t")
 		if len(item) == 2 {
-			list = append(list, define.TaskChangeInfoItem{
+			list = append(list, task.TaskChangeInfoItem{
 				Bduss:     item[0],
 				DouyinURL: item[1],
 			})
@@ -249,7 +262,7 @@ func SyncBaiduUser(c *gin.Context) {
 		}
 	}
 
-	data, err := json.Marshal(&define.TaskChangeInfo{
+	data, err := json.Marshal(&task.TaskChangeInfo{
 		List: list,
 	})
 	if err != nil {
@@ -277,7 +290,7 @@ func ChangeBaiduUserStatus(c *gin.Context) {
 		return
 	}
 
-	result := DB.Model(&BaiduUser{}).Where("uid = ?", param.UID).Update("status", param.Status)
+	result := DB.Model(&TableBaiduUser{}).Where("uid = ?", param.UID).Update("status", param.Status)
 	if result.Error != nil {
 		c.JSON(http.StatusOK, gin.H{"code": define.CannotBind})
 		return

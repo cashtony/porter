@@ -35,14 +35,15 @@ func main() {
 	}
 	// db初始化
 	DB = db.NewPG()
-	DB.AutoMigrate(&DouyinVideo{})
-	DB.AutoMigrate(&DouyinUser{})
-	DB.AutoMigrate(&BaiduUser{})
+	DB.AutoMigrate(&define.TableDouyinVideo{})
+	DB.AutoMigrate(&TableDouyinUser{})
+	DB.AutoMigrate(&TableBaiduUser{})
 	DB.AutoMigrate(&Account{})
 	DB.AutoMigrate(&FaildRecords{})
 	DB.AutoMigrate(&Statistic{})
 	// 队列初始化
-	comsumer := queue.InitComsumer(define.TaskFinishedTopic, &queueMsgHandler{})
+	taskFinishedComsumer := queue.InitComsumer(define.TaskFinishedTopic, &taskUploadHandler{})
+	videoParsedComsumer := queue.InitComsumer(define.TaskParseVideoResultTopic, &taskParseVideoResult{})
 	Q = queue.InitProducer()
 
 	// 定时器初始化, 每天固定时间开始进行用户视频的检测
@@ -75,6 +76,8 @@ func main() {
 
 	g.Run(*Host)
 
-	comsumer.Stop()
+	taskFinishedComsumer.Stop()
+	videoParsedComsumer.Stop()
+
 	c.Stop()
 }

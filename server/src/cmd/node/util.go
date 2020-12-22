@@ -12,6 +12,7 @@ import (
 	"io/ioutil"
 	"log"
 	"math/rand"
+	"net/url"
 	"os"
 	"os/exec"
 	"path"
@@ -261,8 +262,59 @@ func popCheack(bduss string) error {
 	return nil
 }
 
-var js = `var url = "https://quanmin.baidu.com/wise/video/pcpub/getuploadid?video_num=1";
-var xhr = new XMLHttpRequest();
-xhr.open("POST", url, true);
-xhr.send(null);
-console.log("send")`
+func GetSecSig(shareURL string) string {
+	sigChan := make(chan string, 1)
+
+	opts := []chromedp.ExecAllocatorOption{
+		chromedp.Flag("headless", true),
+		chromedp.UserAgent(requester.UserAgent),
+	}
+
+	allocatorCtx, allocatorCancel := chromedp.NewExecAllocator(context.Background(), opts...)
+	defer allocatorCancel()
+
+	optsctx, optCancel := chromedp.NewContext(
+		allocatorCtx,
+		chromedp.WithLogf(log.Printf),
+	)
+	defer optCancel()
+
+	ctx, cancel := context.WithTimeout(optsctx, 10*time.Second)
+	defer cancel()
+
+	listenForNetworkEvent := func(ctx context.Context) {
+		chromedp.ListenTarget(ctx, func(ev interface{}) {
+			switch ev := ev.(type) {
+			case *network.EventRequestWillBeSent:
+				req := ev.Request
+
+				u, err := url.Parse(req.URL)
+				if err != nil {
+					wlog.Info("解析域名失败:", req.URL)
+				}
+				if u.Path == "/web/api/v2/aweme/post/" {
+					sigChan <- u.Query().Get("_signature")
+				}
+			}
+		})
+	}
+	listenForNetworkEvent(ctx)
+
+	err := chromedp.Run(ctx,
+		network.Enable(),
+		chromedp.Navigate(shareURL),
+	)
+	if err != nil {
+		fmt.Println("获取_signature失败:", err)
+		return ""
+	}
+
+	sig := ""
+	select {
+	case <-ctx.Done():
+		wlog.Info("获取signature超时了:", shareURL)
+	case sig = <-sigChan:
+	}
+
+	return sig
+}
