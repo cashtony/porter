@@ -299,3 +299,15 @@ func NewBaiduUser(bduss string) (*TableBaiduUser, error) {
 
 	return b, nil
 }
+
+func UpdateBaiduUser(users []*TableBaiduUser) {
+	for _, u := range users {
+		err := u.fetchQuanminInfo()
+		if err != nil {
+			wlog.Errorf("获取[%s][%s]全民视频用户数据时错误:%s", u.UID, u.Nickname, err)
+			continue
+		}
+		DB.Model(&TableBaiduUser{}).Where("uid = ?", u.UID).Updates(&TableBaiduUser{Diamond: u.Diamond, Nickname: u.Nickname, FansNum: u.FansNum})
+		time.Sleep(100 * time.Millisecond)
+	}
+}

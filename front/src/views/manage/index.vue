@@ -8,7 +8,7 @@
 
 <script>
 import { manuallyDailyUpdate, manuallyNewlyUpdate } from '@/api/manage'
-import { updateBaiduUser } from '@/api/table'
+import { updateBaiduUser } from '@/api/baidu'
 
 export default {
   methods: {

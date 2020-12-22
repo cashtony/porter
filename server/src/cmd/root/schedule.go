@@ -112,9 +112,12 @@ func ScheduleUpload(utype UploadType) {
 	}
 
 	wg.Wait()
-
 }
 
 func DailyUpdateBaiduUsers() {
-
+	usersList := make([]*TableBaiduUser, 0)
+	DB.Model(&TableBaiduUser{}).Find(&usersList)
+	wlog.Infof("本次更新基础数据的用户数量为:%s", len(usersList))
+	UpdateBaiduUser(usersList)
+	wlog.Infof("更新百度用户基础数据完毕")
 }

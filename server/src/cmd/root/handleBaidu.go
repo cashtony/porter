@@ -8,7 +8,6 @@ import (
 	"porter/task"
 	"porter/wlog"
 	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -214,15 +213,7 @@ func BaiduUserUpdate(c *gin.Context) {
 
 	subDB.Find(&usersList)
 
-	for _, u := range usersList {
-		err := u.fetchQuanminInfo()
-		if err != nil {
-			wlog.Errorf("获取[%s][%s]全民视频用户数据时错误:%s", u.UID, u.Nickname, err)
-			continue
-		}
-		DB.Model(&TableBaiduUser{}).Where("uid = ?", u.UID).Updates(&TableBaiduUser{Diamond: u.Diamond, Nickname: u.Nickname, FansNum: u.FansNum})
-		time.Sleep(100 * time.Millisecond)
-	}
+	UpdateBaiduUser(usersList)
 
 	c.JSON(http.StatusOK, gin.H{
 		"code": define.Success,
