@@ -1,15 +1,20 @@
 package main
 
 import (
+	"bufio"
+	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"porter/api"
 	"porter/define"
 	"porter/task"
 	"porter/wlog"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/tealeg/xlsx"
 )
 
 func BindAdd(c *gin.Context) {
@@ -290,4 +295,76 @@ func ChangeBaiduUserStatus(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"code": define.Success,
 	})
+}
+
+func ExcelBaiduUsers(c *gin.Context) {
+	file := xlsx.NewFile()
+	sheet, _ := file.AddSheet("百度用户")
+
+	row := sheet.AddRow()
+
+	cell := row.AddCell()
+	cell.Value = "UID"
+
+	cell = row.AddCell()
+	cell.Value = "昵称"
+
+	cell = row.AddCell()
+	cell.Value = "BDUSS"
+
+	cell = row.AddCell()
+	cell.Value = "抖音URL"
+
+	cell = row.AddCell()
+	cell.Value = "抖音UID"
+
+	cell = row.AddCell()
+	cell.Value = "加入时间"
+
+	cell = row.AddCell()
+	cell.Value = "钻石数量"
+
+	cell = row.AddCell()
+	cell.Value = "粉丝数量"
+
+	usersList := make([]*TableBaiduUser, 0)
+	DB.Model(&TableBaiduUser{}).Find(&usersList)
+
+	for _, u := range usersList {
+		row := sheet.AddRow()
+		cell := row.AddCell()
+		cell.Value = u.UID
+
+		cell = row.AddCell()
+		cell.Value = u.Nickname
+
+		cell = row.AddCell()
+		cell.Value = u.Bduss
+
+		cell = row.AddCell()
+		cell.Value = u.DouyinURL
+
+		cell = row.AddCell()
+		cell.Value = u.DouyinUID
+
+		cell = row.AddCell()
+		cell.Value = u.CreateTime.String()
+
+		cell = row.AddCell()
+		cell.Value = strconv.Itoa(u.Diamond)
+
+		cell = row.AddCell()
+		cell.Value = strconv.Itoa(u.FansNum)
+	}
+
+	var b bytes.Buffer
+	writer := bufio.NewWriter(&b)
+	file.Write(writer)
+	theBytes := b.Bytes()
+
+	c.Writer.WriteHeader(http.StatusOK)
+	c.Header("Content-Disposition", "attachment; filename=百度用户.xlsx")
+	c.Header("Content-Type", "application/octet-stream")
+	c.Header("Accept-Length", fmt.Sprintf("%d", len(theBytes)))
+	c.Writer.Write([]byte(theBytes))
 }

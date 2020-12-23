@@ -14,6 +14,10 @@ func (this *JsonTime) MarshalJSON() ([]byte, error) {
 	return []byte(stamp), nil
 }
 
+func (this *JsonTime) String() string {
+	return (*time.Time)(this).Format("2006-01-02 15:04:05")
+}
+
 type StampTime time.Time
 
 func (this *StampTime) UnmarshalJSON(b []byte) error {

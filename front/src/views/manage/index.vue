@@ -2,7 +2,7 @@
   <div>
     <el-button @click="onDailyUpdate"> 手动执行每日更新任务</el-button>
     <el-button @click="onNewlyUpdate"> 检测当天最新视频并更新</el-button>
-    <el-button @click="onUpdateBaiduUser"> 更新全民小视频数据(钻石,T豆之类的)</el-button>
+    <el-button @click="onUpdateBaiduUser"> 更新百度用户数据</el-button>
   </div>
 </template>
 

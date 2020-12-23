@@ -33,6 +33,12 @@
         搜索
       </el-button>
 
+      <el-button
+        type="primary"
+        @click="onExportExcel"
+      >
+        导出excel
+      </el-button>
     </div>
 
     <el-table
@@ -326,6 +332,11 @@ export default {
           break
       }
       this.fetchData()
+    },
+    onExportExcel() {
+      const aTag = document.createElement('a')
+      aTag.href = '/baidu/user/excel'
+      aTag.click()
     }
   }
 }
