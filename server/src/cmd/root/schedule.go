@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"porter/define"
+	"porter/queue"
 	"porter/task"
 	"porter/wlog"
 	"sync"
@@ -52,7 +53,21 @@ func DailyUpload() {
 }
 
 func ScheduleUpdate() {
-	// todo 查看topic长度, 如果不为0说明之前的更新任务没处理完就不进行更新
+	api, err := queue.GetTopicStat("TaskParseVideo")
+	if err != nil {
+		wlog.Info("获取队列数据错误,将跳过此次检测")
+		return
+	}
+
+	if len(api.Topics) == 0 || len(api.Topics[0].Channels) == 0 {
+		wlog.Info("获取队列长度错误,将跳过此次检测")
+		return
+	}
+
+	if api.Topics[0].Channels[0].Depth != 0 {
+		wlog.Info("队列中还有未处理的消息,将跳过此次检测")
+		return
+	}
 
 	bdUsers := make([]*TableBaiduUser, 0)
 	result := DB.Model(&TableBaiduUser{}).Where("douyin_url != ''").Find(&bdUsers)

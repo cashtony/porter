@@ -46,6 +46,9 @@ var (
 )
 
 const (
+	TopicStats = "http://localhost:4151/stats?format=json"
+)
+const (
 	// B byte
 	B = (int64)(1 << (10 * iota))
 	// KB kilobyte

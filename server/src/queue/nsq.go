@@ -1,7 +1,12 @@
 package queue
 
 import (
+	"encoding/json"
 	"flag"
+	"fmt"
+	"io/ioutil"
+	"net/http"
+	"porter/define"
 	"porter/wlog"
 
 	"github.com/nsqio/go-nsq"
@@ -36,4 +41,39 @@ func InitProducer() *nsq.Producer {
 	}
 
 	return producer
+}
+
+type APITopicStat struct {
+	Topics []struct {
+		Channels []struct {
+			ChannelName string `json:"channel_name"`
+			Depth       int    `json:"depth"`
+		} `json:"channels"`
+		TopicName string `json:"topic_name"`
+	}
+}
+
+func GetTopicStat(topic string) (*APITopicStat, error) {
+	u := fmt.Sprintf("%s&topic=%s", define.TopicStats, topic)
+	req, err := http.NewRequest(http.MethodGet, u, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	result := &APITopicStat{}
+	if err := json.Unmarshal(data, result); err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }
