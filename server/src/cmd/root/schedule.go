@@ -52,7 +52,7 @@ func DailyUpload() {
 	wlog.Info("更新完毕")
 }
 
-func ScheduleUpdate() {
+func ScheduleFetchNewVideo() {
 	api, err := queue.GetTopicStat("TaskParseVideo")
 	if err != nil {
 		wlog.Info("获取队列数据错误,将跳过此次检测")
