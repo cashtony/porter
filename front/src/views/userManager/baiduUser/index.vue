@@ -22,6 +22,7 @@
         style="width: 200px;"
         class="filter-item"
         clearable
+        @clear="onCleanFilter"
         @keyup.enter.native="onHandleFilter"
       />
       <el-button
@@ -163,8 +164,25 @@
             <el-button
               type="primary"
               size="mini"
+              icon="el-icon-edit"
+              circle
               @click="onEdit(scope.row)"
-            >修改绑定</el-button>
+            />
+          </span>
+          <span>
+            <el-popconfirm
+              title="确定删除这个用户吗?"
+              @onConfirm="onDelete(scope.row)"
+            >
+              <el-button
+                slot="reference"
+                type="danger"
+                size="mini"
+                icon="el-icon-delete"
+                circle
+              />
+            </el-popconfirm>
+
           </span>
         </template>
       </el-table-column>
@@ -218,7 +236,12 @@
 </template>
 
 <script>
-import { getBaiduUserList, editBaiduUser, changeStatus } from '@/api/baidu'
+import {
+  getBaiduUserList,
+  editBaiduUser,
+  changeStatus,
+  deleteUser
+} from '@/api/baidu'
 const searchTypeOptions = [
   { key: 'douyinUID', display_name: '抖音UID' },
   { key: 'douyinURL', display_name: '抖音分享链接' },
@@ -257,6 +280,16 @@ export default {
     this.fetchData()
   },
   methods: {
+    resetQuery() {
+      this.listQuery = {
+        page: 1,
+        limit: 20,
+        uid: '',
+        douyinUID: '',
+        douyinURL: '',
+        nickname: ''
+      }
+    },
     fetchData() {
       this.listLoading = true
       getBaiduUserList(this.listQuery)
@@ -315,10 +348,7 @@ export default {
         .catch(message => {})
     },
     onHandleFilter() {
-      this.listQuery.douyinUID = ''
-      this.listQuery.douyinURL = ''
-      this.listQuery.nickname = ''
-      this.listQuery.page = 1
+      this.resetQuery()
 
       switch (this.searchType) {
         case 'douyinUID':
@@ -337,6 +367,17 @@ export default {
       const aTag = document.createElement('a')
       aTag.href = '/baidu/user/excel'
       aTag.click()
+    },
+    onDelete(row) {
+      deleteUser({ uid: row.uid })
+        .then(response => {
+          this.fetchData()
+        })
+        .catch(messge => {})
+    },
+    onCleanFilter() {
+      this.resetQuery()
+      this.fetchData()
     }
   }
 }

@@ -48,16 +48,16 @@ func excuteParseVideo(t define.ParseVideoType, shareURL string) {
 
 	secUID := api.GetSecID(shareURL)
 	secSig := GetSecSig(shareURL)
-
+	nickname := filterSpecial(apiDouyinUser.Nickname)
 	for {
-		wlog.Debugf("开始解析[%s]第[%d]页视频 \n", filterSpecial(apiDouyinUser.Nickname), page)
+		wlog.Debugf("开始解析[%s]第[%d]页视频 \n", nickname, page)
 		apiVideoList, newCursor, err := api.GetDouyinVideo(secUID, secSig, nextCursor)
 		if err != nil {
 			wlog.Error("获取单页视频发生错误:", err)
 			return
 		}
 
-		wlog.Debugf("[%s]第[%d]页视频解析完毕 newCursor:%d videoLen:%d \n", filterSpecial(apiDouyinUser.Nickname), page, newCursor, len(apiVideoList))
+		wlog.Debugf("[%s]第[%d]页视频解析完毕 newCursor:%d videoLen:%d \n", nickname, page, newCursor, len(apiVideoList))
 
 		tableVideoList := make([]*define.TableDouyinVideo, 0)
 		for _, v := range apiVideoList {
@@ -99,5 +99,5 @@ func excuteParseVideo(t define.ParseVideoType, shareURL string) {
 		page++
 	}
 
-	wlog.Debugf("用户[%s]视频解析完毕 \n", apiDouyinUser.Nickname)
+	wlog.Debugf("用户[%s]视频解析完毕 \n", nickname)
 }

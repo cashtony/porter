@@ -38,11 +38,6 @@ func DailyUpload() {
 	}
 
 	isUpdading = true
-
-	wlog.Info("开始更新百度用户数据")
-	DailyUpdateBaiduUsers()
-	wlog.Info("百度用户数据更新完毕")
-
 	// 更新百度视频数据
 	wlog.Info("开始发布百度用户视频任务")
 	ScheduleUpload(UploadTypeDaily)
@@ -131,8 +126,8 @@ func ScheduleUpload(utype UploadType) {
 
 func DailyUpdateBaiduUsers() {
 	usersList := make([]*TableBaiduUser, 0)
-	DB.Model(&TableBaiduUser{}).Find(&usersList)
-	wlog.Infof("本次更新基础数据的用户数量为:%s", len(usersList))
+	DB.Model(&TableBaiduUser{}).Where("status = ?", BaiduUserStatusNormal).Find(&usersList)
+	wlog.Infof("本次更新基础数据的用户数量为:%d", len(usersList))
 	UpdateBaiduUser(usersList)
 	wlog.Infof("更新百度用户基础数据完毕")
 }

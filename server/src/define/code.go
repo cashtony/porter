@@ -16,4 +16,5 @@ const (
 	AlreadyUpdating
 	AlreadyBind
 	WrongDouyinShareURL
+	CannotDelete
 )

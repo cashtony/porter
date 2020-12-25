@@ -32,6 +32,7 @@ func main() {
 	if *Mode == "debug" {
 		wlog.DevelopMode()
 	}
+
 	// 读取一些配置文件
 	InitConfigFile()
 	// 从消息队列中获取任务

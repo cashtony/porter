@@ -35,60 +35,6 @@ func (TableBaiduUser) TableName() string {
 	return "baidu_users"
 }
 
-func (b *TableBaiduUser) fetchQuanminInfo() error {
-	client := &http.Client{}
-	req, err := http.NewRequest("POST", define.GetQuanminInfoV2, nil)
-	if err != nil {
-		return fmt.Errorf("创建请求失败: %s", err)
-	}
-	req.Header.Add("User-Agent", requester.UserAgent)
-	cookie := http.Cookie{Name: "BDUSS", Value: b.Bduss, Expires: time.Now().Add(180 * 24 * time.Hour)}
-	req.AddCookie(&cookie)
-
-	quanminResp, err := client.Do(req)
-	if err != nil {
-		return fmt.Errorf("获取全民账号的基本信息出错: %s", err)
-	}
-	defer quanminResp.Body.Close()
-
-	quanminJ, err := simplejson.NewFromReader(quanminResp.Body)
-	if err != nil {
-		return fmt.Errorf("解析全民视频数据失败: %s", err)
-	}
-
-	mineJ := quanminJ.Get("mine")
-	errCode, err := mineJ.Get("status").Int()
-	if err != nil {
-		return fmt.Errorf("接口返回值错误: %s", err)
-	}
-
-	if errCode != 0 {
-		errMsg, _ := quanminJ.Get("msg").String()
-		return fmt.Errorf("请求获取全民账号数据失败: %d, 消息: %s", errCode, errMsg)
-	}
-
-	data := mineJ.Get("data")
-	diamond, err := data.Get("charm").Get("availablePointsNumber").Int()
-	if err != nil {
-		return fmt.Errorf("解析全民视频钻石数量获取失败: %s", err)
-	}
-	userJ := data.Get("user")
-	nickname, err := userJ.Get("userName").String()
-	if err != nil {
-		return fmt.Errorf("解析全民视频nickname失败: %s", err)
-	}
-	fansnum, err := userJ.Get("fansNum").Int()
-	if err != nil {
-		return fmt.Errorf("解析全民视频粉丝数量失败: %s", err)
-	}
-
-	b.Nickname = nickname
-	b.FansNum = fansnum
-	b.Diamond = diamond
-
-	return nil
-}
-
 func (b *TableBaiduUser) fetcBaseInfo() error {
 	client := &http.Client{}
 	req, err := http.NewRequest(http.MethodGet, define.GetBaiduBaseInfo, nil)
@@ -98,13 +44,6 @@ func (b *TableBaiduUser) fetcBaseInfo() error {
 	req.Header.Add("User-Agent", requester.UserAgent)
 	cookie := http.Cookie{Name: "BDUSS", Value: b.Bduss, Expires: time.Now().Add(180 * 24 * time.Hour)}
 	req.AddCookie(&cookie)
-
-	// cookie := http.Cookie{Name: "BDUSS", Value: b.Bduss, Expires: time.Now().Add(180 * 24 * time.Hour)}
-	// req, err := http.NewRequest("GET", define.GetBaiduBaseInfo, nil)
-	// if err != nil {
-	// 	return fmt.Errorf("创建请求失败: %s", err)
-	// }
-	// req.AddCookie(&cookie)
 
 	// 先获取基本数据
 	resp, err := client.Do(req)
@@ -292,22 +231,30 @@ func NewBaiduUser(bduss string) (*TableBaiduUser, error) {
 		return nil, fmt.Errorf("获取基本百度用户基本数据失败:%s", err)
 	}
 
-	err = b.fetchQuanminInfo()
+	qmInfo, err := api.GetQuanminInfo(bduss)
 	if err != nil {
 		return nil, fmt.Errorf("获取全民用户基本数据失败:%s", err)
 	}
+
+	b.Nickname = qmInfo.Mine.Data.User.UserName
+	b.FansNum = qmInfo.Mine.Data.User.FansNum
+	b.Diamond = qmInfo.Mine.Data.Charm.AvailablePointsNumber
 
 	return b, nil
 }
 
 func UpdateBaiduUser(users []*TableBaiduUser) {
 	for _, u := range users {
-		err := u.fetchQuanminInfo()
+		qmInfo, err := api.GetQuanminInfo(u.Bduss)
 		if err != nil {
 			wlog.Errorf("获取[%s][%s]全民视频用户数据时错误:%s", u.UID, u.Nickname, err)
 			continue
 		}
-		DB.Model(&TableBaiduUser{}).Where("uid = ?", u.UID).Updates(&TableBaiduUser{Diamond: u.Diamond, Nickname: u.Nickname, FansNum: u.FansNum})
-		time.Sleep(100 * time.Millisecond)
+		nickname := qmInfo.Mine.Data.User.UserName
+		fansNum := qmInfo.Mine.Data.User.FansNum
+		diamond := qmInfo.Mine.Data.Charm.AvailablePointsNumber
+
+		DB.Model(&TableBaiduUser{}).Where("uid = ?", u.UID).Updates(&TableBaiduUser{Diamond: diamond, Nickname: nickname, FansNum: fansNum})
+
 	}
 }

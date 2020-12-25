@@ -106,12 +106,6 @@ func BindAdd(c *gin.Context) {
 			wlog.Error("视频解析任务发布失败:", err)
 		}
 
-		// ThreadTraffic <- 1
-		// go func() {
-		// 	tableDouyinUser.initVideoList()
-		// 	// bd.UploadVideo(UploadTypeDaily)
-		// 	<-ThreadTraffic
-		// }()
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": define.Success})
@@ -210,15 +204,7 @@ func BaiduUserUpdate(c *gin.Context) {
 		return
 	}
 
-	usersList := make([]*TableBaiduUser, 0)
-	subDB := DB.Model(&TableBaiduUser{})
-	if param.UID != "" {
-		subDB.Where("uid = ?", param.UID)
-	}
-
-	subDB.Find(&usersList)
-
-	UpdateBaiduUser(usersList)
+	DailyUpdateBaiduUsers()
 
 	c.JSON(http.StatusOK, gin.H{
 		"code": define.Success,
@@ -289,6 +275,32 @@ func ChangeBaiduUserStatus(c *gin.Context) {
 	result := DB.Model(&TableBaiduUser{}).Where("uid = ?", param.UID).Update("status", param.Status)
 	if result.Error != nil {
 		c.JSON(http.StatusOK, gin.H{"code": define.CannotBind})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code": define.Success,
+	})
+}
+
+func BaiduUserDelete(c *gin.Context) {
+	param := &struct {
+		UID string `json:"uid"`
+	}{}
+	err := c.BindJSON(param)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": define.ParamErr})
+		return
+	}
+
+	if param.UID == "" {
+		c.JSON(http.StatusOK, gin.H{"code": define.ParamErr})
+		return
+	}
+
+	result := DB.Debug().Where("uid = ?", param.UID).Delete(&TableBaiduUser{}).Limit(1)
+	if result.Error != nil {
+		c.JSON(http.StatusOK, gin.H{"code": define.CannotDelete, "message": "删除时发生错误"})
 		return
 	}
 

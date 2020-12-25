@@ -39,3 +39,11 @@ export function changeStatus(data) {
         data
     })
 }
+
+export function deleteUser(data) {
+    return request({
+        url: '/baidu/user/delete',
+        method: 'post',
+        data
+    })
+}

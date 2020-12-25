@@ -11,6 +11,9 @@
       />
     </div>
     <div>
+      当日一共更新了{{totalNum}}个用户,共计{{totalVideos}}条视频
+    </div>
+    <div>
       <el-table
         v-loading="listLoading"
         :data="list"
@@ -74,6 +77,7 @@ export default {
     return {
       list: null,
       totalNum: 0,
+      totalVideos: 0,
       listLoading: false,
 
       listQuery: {
@@ -96,6 +100,7 @@ export default {
       getStatistic(this.listQuery).then(response => {
         this.list = response.list
         this.totalNum = response.totalNum
+        this.totalVideos = response.totalVideos
         this.listLoading = false
       })
     },
@@ -107,7 +112,6 @@ export default {
       this.fetchData()
     },
     formatter(row, column, cellValue, index) {
-      console.log('value', cellValue)
       var d = new Date(cellValue)
 
       return `${d.getFullYear()}年${d.getMonth()}月${d.getDate()}日`

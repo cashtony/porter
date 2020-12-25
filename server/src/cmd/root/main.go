@@ -49,6 +49,7 @@ func main() {
 	// 定时器初始化, 每天固定时间开始进行用户视频的检测
 	c := cron.New()
 	c.AddFunc("0 22 * * *", DailyUpload)
+	c.AddFunc("0 23 * * *", DailyUpdateBaiduUsers)
 	c.AddFunc("0 9-21 * * *", ScheduleFetchNewVideo)
 	go c.Run()
 
@@ -67,6 +68,7 @@ func main() {
 	g.POST("/baidu/user/update", BaiduUserUpdate)
 	g.POST("/baidu/user/sync", SyncBaiduUser)
 	g.POST("/baidu/user/changeStatus", ChangeBaiduUserStatus)
+	g.POST("/baidu/user/delete", BaiduUserDelete)
 	g.GET("/baidu/user/excel", ExcelBaiduUsers)
 
 	g.POST("/bind/add", BindAdd)
