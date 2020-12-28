@@ -113,13 +113,15 @@ func BindAdd(c *gin.Context) {
 
 func BaiduUserList(c *gin.Context) {
 	param := &struct {
-		UID       string `json:"uid,omitempty"`
-		DouyinUID string `json:"douyinUID,omitempty"`
-		DouyinURL string `json:"douyinURL,omitempty"`
-		BDUSS     string `json:"bduss,omitempty"`
-		Nickname  string `json:"nickname,omitempty"`
-		Page      int    `json:"page"`
-		Limit     int    `json:"limit"`
+		UID            string `json:"uid,omitempty"`
+		DouyinUID      string `json:"douyinUID,omitempty"`
+		DouyinURL      string `json:"douyinURL,omitempty"`
+		BDUSS          string `json:"bduss,omitempty"`
+		Nickname       string `json:"nickname,omitempty"`
+		DiamondSort    string `json:"diamondSort,omitempty"`
+		CreateTimeSort string `json:"createTimeSort,omitempty"`
+		Page           int    `json:"page"`
+		Limit          int    `json:"limit"`
 	}{Page: 1, Limit: 10}
 
 	err := c.BindJSON(param)
@@ -127,7 +129,7 @@ func BaiduUserList(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": define.ParamErr})
 		return
 	}
-
+	wlog.Info("param.DiamondSort:", param.DiamondSort)
 	users := make([]*TableBaiduUser, 0)
 	totalNum := int64(0)
 	subDB := DB.Model(&TableBaiduUser{})
@@ -140,12 +142,27 @@ func BaiduUserList(c *gin.Context) {
 	if param.Nickname != "" {
 		subDB.Where("nickname like ?", "%"+param.Nickname+"%")
 	}
+	if param.DiamondSort != "" {
+		if param.DiamondSort == "+diamond" {
+			subDB.Order("diamond desc")
+		} else {
+			subDB.Order("diamond")
+		}
+
+	}
+	if param.CreateTimeSort != "" {
+		if param.CreateTimeSort == "+createTime" {
+			subDB.Order("create_time desc")
+		} else {
+			subDB.Order("create_time")
+		}
+	}
 
 	result := subDB.
 		Count(&totalNum).
 		Offset((param.Page - 1) * param.Limit).
 		Limit(param.Limit).
-		Order("create_time desc").Find(&users)
+		Find(&users)
 	if result.Error != nil {
 		c.JSON(http.StatusOK, gin.H{"code": define.QueryDataErr})
 		return

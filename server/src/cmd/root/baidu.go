@@ -238,7 +238,7 @@ func NewBaiduUser(bduss string) (*TableBaiduUser, error) {
 
 	b.Nickname = qmInfo.Mine.Data.User.UserName
 	b.FansNum = qmInfo.Mine.Data.User.FansNum
-	b.Diamond = qmInfo.Mine.Data.Charm.AvailablePointsNumber
+	b.Diamond = qmInfo.Mine.Data.Charm.CharmpointsNumber
 
 	return b, nil
 }
@@ -252,9 +252,8 @@ func UpdateBaiduUser(users []*TableBaiduUser) {
 		}
 		nickname := qmInfo.Mine.Data.User.UserName
 		fansNum := qmInfo.Mine.Data.User.FansNum
-		diamond := qmInfo.Mine.Data.Charm.AvailablePointsNumber
+		diamond := qmInfo.Mine.Data.Charm.CharmpointsNumber
 
 		DB.Model(&TableBaiduUser{}).Where("uid = ?", u.UID).Updates(&TableBaiduUser{Diamond: diamond, Nickname: nickname, FansNum: fansNum})
-
 	}
 }

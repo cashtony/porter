@@ -49,6 +49,7 @@
       border
       fit
       highlight-current-row
+      @sort-change="onSortChange"
     >
       <el-table-column
         label="UID"
@@ -92,8 +93,10 @@
 
       <el-table-column
         label="钻石数"
-        width="80"
+        width="120"
         align="center"
+        sortable="custom"
+        prop="diamond"
       >
         <template slot-scope="scope">
           <span>{{ scope.row.diamond }}</span>
@@ -129,6 +132,9 @@
       <el-table-column
         label="创建时间"
         align="center"
+        sortable="custom"
+        prop="createTime"
+        width="180"
       >
         <template slot-scope="scope">
           <span>{{ scope.row.createTime }}</span>
@@ -243,9 +249,9 @@ import {
   deleteUser
 } from '@/api/baidu'
 const searchTypeOptions = [
+  { key: 'nickname', display_name: '昵称' },
   { key: 'douyinUID', display_name: '抖音UID' },
-  { key: 'douyinURL', display_name: '抖音分享链接' },
-  { key: 'nickname', display_name: '昵称' }
+  { key: 'douyinURL', display_name: '抖音分享链接' }
 ]
 export default {
   name: 'BaiduAccountList',
@@ -260,7 +266,9 @@ export default {
         uid: '',
         douyinUID: '',
         douyinURL: '',
-        nickname: ''
+        nickname: '',
+        diamondSort: '+diamond', // 默认按钻石排序
+        createTimeSort: ''
       },
       dialogForm: {
         uid: '',
@@ -287,7 +295,10 @@ export default {
         uid: '',
         douyinUID: '',
         douyinURL: '',
-        nickname: ''
+        nickname: '',
+        diamondSort: '',
+        createTimeSort: '',
+        timeSort: ''
       }
     },
     fetchData() {
@@ -298,7 +309,9 @@ export default {
           this.totalNum = response.totalNum
           this.listLoading = false
         })
-        .catch(messge => {})
+        .catch(messge => {
+          this.listLoading = false
+        })
     },
     handleCurrentChange(num) {
       this.listQuery.page = num
@@ -377,6 +390,40 @@ export default {
     },
     onCleanFilter() {
       this.resetQuery()
+      this.fetchData()
+    },
+    resetOrder() {
+      this.listQuery.diamondSort = ''
+      this.listQuery.createTimeSort = ''
+    },
+    onSortChange(data) {
+      this.resetOrder()
+      const { prop, order } = data
+      console.log('prop:', prop)
+      switch (prop) {
+        case 'diamond':
+          this.sortByDiamond(order)
+          break
+        case 'createTime':
+          console.log('createTime')
+          this.sortByCreateTime(order)
+          break
+      }
+    },
+    sortByDiamond(order) {
+      if (order === 'ascending') {
+        this.listQuery.diamondSort = '+diamond'
+      } else {
+        this.listQuery.diamondSort = '-diamond'
+      }
+      this.fetchData()
+    },
+    sortByCreateTime(order) {
+      if (order === 'ascending') {
+        this.listQuery.createTimeSort = '+createTime'
+      } else {
+        this.listQuery.createTimeSort = '-createTime'
+      }
       this.fetchData()
     }
   }

@@ -1,6 +1,9 @@
 package main
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+)
 
 func TestGetSecSig(t *testing.T) {
 	url := "https://v.douyin.com/JqQQY4p/"
@@ -8,4 +11,6 @@ func TestGetSecSig(t *testing.T) {
 	if sig == "" {
 		t.Error("获取加密signature失败")
 	}
+
+	fmt.Println("signature:", sig)
 }

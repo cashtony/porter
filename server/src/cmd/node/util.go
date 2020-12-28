@@ -305,7 +305,7 @@ func GetSecSig(shareURL string) string {
 		chromedp.Navigate(shareURL),
 	)
 	if err != nil {
-		fmt.Println("获取_signature失败:", err)
+		wlog.Info("获取_signature失败:", err)
 		return ""
 	}
 
