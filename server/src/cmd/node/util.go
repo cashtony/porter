@@ -12,7 +12,6 @@ import (
 	"io/ioutil"
 	"log"
 	"math/rand"
-	"net/url"
 	"os"
 	"os/exec"
 	"path"
@@ -21,7 +20,6 @@ import (
 	"sort"
 	"strings"
 	"time"
-	"unicode"
 
 	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/dom"
@@ -52,19 +50,6 @@ func filterKeyword(content string) string {
 		content = strings.ReplaceAll(content, value, "")
 	}
 	return content
-}
-
-// 过滤掉特殊字符
-func filterSpecial(content string) string {
-	var buffer bytes.Buffer
-	for _, v := range content {
-		if unicode.Is(unicode.Han, v) || unicode.IsLetter(v) || unicode.IsDigit(v) || unicode.IsPunct(v) {
-			buffer.WriteRune(v)
-			continue
-		}
-	}
-
-	return buffer.String()
 }
 
 func addExtraName(name string) string {
@@ -260,61 +245,4 @@ func popCheack(bduss string) error {
 	}
 
 	return nil
-}
-
-func GetSecSig(shareURL string) string {
-	sigChan := make(chan string, 1)
-
-	opts := []chromedp.ExecAllocatorOption{
-		chromedp.Flag("headless", true),
-		chromedp.UserAgent(requester.UserAgent),
-	}
-
-	allocatorCtx, allocatorCancel := chromedp.NewExecAllocator(context.Background(), opts...)
-	defer allocatorCancel()
-
-	optsctx, optCancel := chromedp.NewContext(
-		allocatorCtx,
-		chromedp.WithLogf(log.Printf),
-	)
-	defer optCancel()
-
-	ctx, cancel := context.WithTimeout(optsctx, 10*time.Second)
-	defer cancel()
-
-	listenForNetworkEvent := func(ctx context.Context) {
-		chromedp.ListenTarget(ctx, func(ev interface{}) {
-			switch ev := ev.(type) {
-			case *network.EventRequestWillBeSent:
-				req := ev.Request
-
-				u, err := url.Parse(req.URL)
-				if err != nil {
-					wlog.Info("解析域名失败:", req.URL)
-				}
-				if u.Path == "/web/api/v2/aweme/post/" {
-					sigChan <- u.Query().Get("_signature")
-				}
-			}
-		})
-	}
-	listenForNetworkEvent(ctx)
-
-	err := chromedp.Run(ctx,
-		network.Enable(),
-		chromedp.Navigate(shareURL),
-	)
-	if err != nil {
-		wlog.Info("获取_signature失败:", err)
-		return ""
-	}
-
-	sig := ""
-	select {
-	case <-ctx.Done():
-		wlog.Info("获取signature超时了:", shareURL)
-	case sig = <-sigChan:
-	}
-
-	return sig
 }

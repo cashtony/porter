@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"io"
 	"porter/wlog"
+	"unicode"
 )
 
 func PrintBody(body io.Reader) {
@@ -18,4 +19,17 @@ func IntToBytes(n int) []byte {
 	bytebuf := bytes.NewBuffer([]byte{})
 	binary.Write(bytebuf, binary.BigEndian, data)
 	return bytebuf.Bytes()
+}
+
+// 过滤掉特殊字符
+func FilterSpecial(content string) string {
+	var buffer bytes.Buffer
+	for _, v := range content {
+		if unicode.Is(unicode.Han, v) || unicode.IsLetter(v) || unicode.IsDigit(v) || unicode.IsPunct(v) {
+			buffer.WriteRune(v)
+			continue
+		}
+	}
+
+	return buffer.String()
 }

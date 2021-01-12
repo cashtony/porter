@@ -61,23 +61,24 @@ export const constantRoutes = [
     redirect: '/userManager/batch',
     meta: { title: '用户管理' },
     children: [
-      {
-        path: '/batch',
-        name: '批量增加',
-        component: () => import('@/views/userManager/batch/index'),
-        meta: { title: '批量增加' }
-      },
-      {
-        path: '/baidu/sync',
-        name: '复制抖音用户数据',
-        component: () => import('@/views/userManager/batchSync/index'),
-        meta: { title: '复制抖音用户' }
-      },
+
+      // {
+      //   path: '/baidu/sync',
+      //   name: '复制抖音用户数据',
+      //   component: () => import('@/views/userManager/batchSync/index'),
+      //   meta: { title: '复制抖音用户' }
+      // },
       {
         path: '/douyin',
         name: '抖音用户',
         component: () => import('@/views/userManager/douyinUser/index'),
         meta: { title: '抖音用户' }
+      },
+      {
+        path: '/search',
+        name: '抖音关键字',
+        component: () => import('@/views/userManager/douyinSearch/index'),
+        meta: { title: '按抖音关键字增加作者' }
       },
       {
         path: '/baidu',

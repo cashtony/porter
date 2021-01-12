@@ -9,11 +9,13 @@ import (
 	"net/http"
 	"net/textproto"
 	"net/url"
-	"porter/api"
 	"porter/define"
 	"porter/requester"
+	"porter/task"
+	"porter/util"
 	"porter/wlog"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-errors/errors"
@@ -40,48 +42,87 @@ type BaiduClient struct {
 }
 
 // 将抖音那边的头像,昵称,签名等数据同步到百度
-func (b *BaiduClient) SyncFromDouyin(shareURL string) error {
-	if shareURL == "" {
-		return errors.Errorf("用户[%s]绑定的抖音为空,不同步数据", b.Nickname)
-	}
-
-	apiDouyinUser, err := api.NewAPIDouyinUser(shareURL)
-	if err != nil {
-		return fmt.Errorf("获取抖音用户数据失败:%s", err)
-	}
-
-	wlog.Infof("开始从抖音用户[%s]复制用户信息", apiDouyinUser.Nickname)
-
-	headImgURL := apiDouyinUser.AvatarMedium.URLList[0]
+func (b *BaiduClient) SyncFromDouyin(item *task.TaskChangeInfoItem) error {
+	wlog.Infof("开始从抖音用户[%s]复制用户信息", item.Nickname)
 	// 更换头像
-	if err := b.Setportrait(headImgURL); err != nil {
-		wlog.Infof("[%s]更换头像失败: %s", apiDouyinUser.Nickname, err)
+	if err := b.Setportrait(item.Avatar); err != nil {
+		wlog.Infof("[%s]设置头像失败: %s", item.Nickname, err)
 	} else {
-		wlog.Infof("[%s]头像更换成功", apiDouyinUser.Nickname)
+		wlog.Infof("[%s]设置头像成功", item.Nickname)
 	}
 
 	// 昵称和签名关键字过滤后进行更换
-	newName := filterKeyword(addExtraName(filterSpecial(apiDouyinUser.Nickname)))
-	err = b.SetProfile(map[string]string{
+	newName := filterKeyword(addExtraName(util.FilterSpecial(item.Nickname)))
+	err := b.SetProfile(map[string]string{
 		"nickname": newName,
 	})
 	if err != nil {
-		wlog.Infof("[%s]更换昵称[%s]失败: %s", apiDouyinUser.Nickname, newName, err)
+		wlog.Infof("[%s]设置昵称[%s]失败: %s", item.Nickname, newName, err)
 	} else {
-		wlog.Infof("[%s]昵称更换为[%s]成功", apiDouyinUser.Nickname, newName)
+		wlog.Infof("[%s]设置昵称为[%s]成功", item.Nickname, newName)
 	}
 
-	autograph := filterKeyword(filterSpecial(apiDouyinUser.Signature))
+	autograph := filterKeyword(util.FilterSpecial(item.Signature))
 	err = b.SetProfile(map[string]string{
 		"autograph": autograph,
 	})
 	if err != nil {
-		wlog.Infof("[%s]更换签名[%s]失败: %s", apiDouyinUser.Nickname, autograph, err)
+		wlog.Infof("[%s]设置签名[%s]失败: %s", item.Nickname, autograph, err)
 	} else {
-		wlog.Infof("[%s]签名更换成功", apiDouyinUser.Nickname)
+		wlog.Infof("[%s]设置签名成功", item.Nickname)
 	}
 
-	wlog.Infof("[%s]信息复制完毕", apiDouyinUser.Nickname)
+	// 性别 sex=1&user_type=ugc 1是女 2是男 0是未知
+	if item.Gender != 0 {
+		// 抖音和百度的性别设置是反的
+		sex := "1"
+		if item.Gender == 1 {
+			sex = "2"
+		}
+		err = b.SetProfile(map[string]string{
+			"sex": sex,
+		})
+		if err != nil {
+			wlog.Infof("[%s]设置性别[%s]失败: %s", item.Nickname, sex, err)
+		} else {
+			wlog.Infof("[%s]设置性别成功", item.Nickname)
+		}
+	}
+
+	// 生日birthday=19830104&user_type=ugc
+	if item.Birthday != "" {
+		birthday := strings.ReplaceAll(item.Birthday, "-", "")
+		err = b.SetProfile(map[string]string{
+			"birthday": birthday,
+		})
+		if err != nil {
+			wlog.Infof("[%s]设置生日[%s]失败: %s", item.Nickname, birthday, err)
+		} else {
+			wlog.Infof("[%s]设置生日成功", item.Nickname)
+		}
+	}
+
+	if item.Province != "" || item.City != "" {
+		var cityCode int
+		if item.City != "" {
+			cityName := strings.ReplaceAll(item.City, "市", "")
+			cityCode = Area[cityName]
+		} else {
+			provinceName := strings.ReplaceAll(item.Province, "省", "")
+			cityCode = Area[provinceName]
+		}
+
+		err = b.SetProfile(map[string]string{
+			"city": strconv.Itoa(cityCode),
+		})
+		if err != nil {
+			wlog.Infof("[%s]设置城市[%d]失败: %s", item.Nickname, item.Location, err)
+		} else {
+			wlog.Infof("[%s]设置城市成功", item.Nickname)
+		}
+	}
+
+	wlog.Infof("[%s]信息复制完毕", item.Nickname)
 
 	return nil
 }

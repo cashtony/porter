@@ -41,9 +41,11 @@ func main() {
 	DB.AutoMigrate(&Account{})
 	DB.AutoMigrate(&FaildRecords{})
 	DB.AutoMigrate(&Statistic{})
+
 	// 队列初始化
 	taskFinishedComsumer := queue.InitComsumer(define.TaskFinishedTopic, &taskUploadHandler{})
 	videoParsedComsumer := queue.InitComsumer(define.TaskParseVideoResultTopic, &taskParseVideoResult{})
+	addDouyinUserComsumer := queue.InitComsumer(define.TaskAddDouyinUser, &taskAddDouyinUser{})
 	Q = queue.InitProducer()
 
 	// 定时器初始化, 每天固定时间开始进行用户视频的检测
@@ -62,16 +64,21 @@ func main() {
 	g.POST("/account/logout", Logout)
 	g.GET("/account/info", AccountInfo)
 
+	g.POST("/douyin/user/add", AddDouyinUser)
 	g.POST("/douyin/user/list", DouyinUserList)
+	g.POST("/douyin/user/search", DouyinUserSearch)
+	g.POST("/douyin/user/delete", DeleteDouyinUser)
+
+	g.POST("/baidu/user/add", AddBaiduUser)
 	g.POST("/baidu/user/list", BaiduUserList)
 	g.POST("/baidu/user/edit", BaiduUserEdit)
 	g.POST("/baidu/user/update", BaiduUserUpdate)
-	g.POST("/baidu/user/sync", SyncBaiduUser)
+	// g.POST("/baidu/user/sync", SyncBaiduUser)
 	g.POST("/baidu/user/changeStatus", ChangeBaiduUserStatus)
 	g.POST("/baidu/user/delete", BaiduUserDelete)
 	g.GET("/baidu/user/excel", ExcelBaiduUsers)
 
-	g.POST("/bind/add", BindAdd)
+	g.POST("/bind", BindUser)
 
 	g.POST("/statistic", GetStatistic)
 
@@ -82,6 +89,6 @@ func main() {
 
 	taskFinishedComsumer.Stop()
 	videoParsedComsumer.Stop()
-
+	addDouyinUserComsumer.Stop()
 	c.Stop()
 }

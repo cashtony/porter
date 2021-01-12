@@ -1,18 +1,24 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
+	"net/url"
 	"porter/define"
 	"porter/requester"
 	"porter/wlog"
 	"time"
+
+	"github.com/chromedp/cdproto/network"
+	"github.com/chromedp/chromedp"
 )
 
-type APIDouyinUser struct {
+type APIWebDouyinUser struct {
 	UID            string `json:"uid" gorm:"primaryKey"`
 	UniqueUID      string `json:"unique_id" gorm:"primaryKey"` // 抖音号
 	Nickname       string `json:"nickname"`
@@ -27,7 +33,7 @@ type APIDouyinUser struct {
 	SecUID string `json:"-"`
 }
 
-func NewAPIDouyinUser(shareURL string) (*APIDouyinUser, error) {
+func NewAPIWebDouyinUser(shareURL string) (*APIWebDouyinUser, error) {
 	if shareURL == "" {
 		return nil, errors.New("shareURL不能为空")
 	}
@@ -38,8 +44,8 @@ func NewAPIDouyinUser(shareURL string) (*APIDouyinUser, error) {
 	}
 
 	data := struct {
-		StatusCode int            `json:"status_code"`
-		UserInfo   *APIDouyinUser `json:"user_info"`
+		StatusCode int               `json:"status_code"`
+		UserInfo   *APIWebDouyinUser `json:"user_info"`
 	}{}
 
 	infoReq := fmt.Sprintf("%s?sec_uid=%s", define.GetUserInfo, secUID)
@@ -95,17 +101,18 @@ func GetSecID(shareURL string) string {
 }
 
 type APIDouyinVideo struct {
-	AwemeID string `json:"aweme_id"`
-	Desc    string `json:"desc"`
-	Video   struct {
+	AwemeID    string `json:"aweme_id"`
+	Desc       string `json:"desc"`
+	CreateTime int64  `json:"create_time"`
+	Video      struct {
 		Cover struct {
 			URLList []string `json:"url_list"`
 		} `json:"cover"`
-		Duration int    `json:"duration"`
-		Height   int    `json:"height"`
-		Width    int    `json:"width"`
-		Vid      string `json:"vid"`
+		Duration int `json:"duration"`
+		Height   int `json:"height"`
+		Width    int `json:"width"`
 		PlayAddr struct {
+			URI     string   `json:"uri"`
 			URLList []string `json:"url_list"`
 		} `json:"play_addr"`
 	} `json:"video"`
@@ -229,4 +236,61 @@ func GetVideoExtraInfo(awemeid string) (*APIDouyinVideoExraInfo, error) {
 	}
 
 	return info, nil
+}
+
+func GetSecSignature(shareURL string) string {
+	sigChan := make(chan string, 1)
+
+	opts := []chromedp.ExecAllocatorOption{
+		chromedp.Flag("headless", true),
+		chromedp.UserAgent(requester.UserAgent),
+	}
+
+	allocatorCtx, allocatorCancel := chromedp.NewExecAllocator(context.Background(), opts...)
+	defer allocatorCancel()
+
+	optsctx, optCancel := chromedp.NewContext(
+		allocatorCtx,
+		chromedp.WithLogf(log.Printf),
+	)
+	defer optCancel()
+
+	ctx, cancel := context.WithTimeout(optsctx, 10*time.Second)
+	defer cancel()
+
+	listenForNetworkEvent := func(ctx context.Context) {
+		chromedp.ListenTarget(ctx, func(ev interface{}) {
+			switch ev := ev.(type) {
+			case *network.EventRequestWillBeSent:
+				req := ev.Request
+
+				u, err := url.Parse(req.URL)
+				if err != nil {
+					wlog.Info("解析域名失败:", req.URL)
+				}
+				if u.Path == "/web/api/v2/aweme/post/" {
+					sigChan <- u.Query().Get("_signature")
+				}
+			}
+		})
+	}
+	listenForNetworkEvent(ctx)
+
+	err := chromedp.Run(ctx,
+		network.Enable(),
+		chromedp.Navigate(shareURL),
+	)
+	if err != nil {
+		wlog.Info("获取_signature失败:", err)
+		return ""
+	}
+
+	sig := ""
+	select {
+	case <-ctx.Done():
+		wlog.Info("获取signature超时了:", shareURL)
+	case sig = <-sigChan:
+	}
+
+	return sig
 }

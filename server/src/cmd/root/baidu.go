@@ -23,9 +23,12 @@ type TableBaiduUser struct {
 	Bduss          string          `gorm:"primaryKey" json:"dbuss"`
 	FansNum        int             `json:"fansNum"`
 	Diamond        int             `json:"diamond"`
+	Sex            string          `json:"sex"`
+	Age            string          `json:"age"`
+	Area           string          `json:"area"`
+	Autograph      string          `json:"autograph"`
 	VideoCount     int             `json:"videoCount"`
 	DouyinUID      string          `json:"douyinUID"` // 绑定的抖音uid
-	DouyinURL      string          `json:"douyinURL"`
 	CreateTime     define.JsonTime `gorm:"default:now()" json:"createTime"`
 	LastUploadTime time.Time       `json:"lastUploadTime"`
 	Status         int             `json:"status" gorm:"default:1"` // 1:正常, 0:不搬运视频
@@ -235,10 +238,17 @@ func NewBaiduUser(bduss string) (*TableBaiduUser, error) {
 	if err != nil {
 		return nil, fmt.Errorf("获取全民用户基本数据失败:%s", err)
 	}
+	userInfo := qmInfo.Mine.Data.User
+	charmInfo := qmInfo.Mine.Data.Charm
 
-	b.Nickname = qmInfo.Mine.Data.User.UserName
-	b.FansNum = qmInfo.Mine.Data.User.FansNum
-	b.Diamond = qmInfo.Mine.Data.Charm.CharmpointsNumber
+	b.Nickname = userInfo.UserName
+	b.FansNum = userInfo.FansNum
+	b.Sex = userInfo.Sex
+	b.Area = userInfo.Area
+	b.Autograph = userInfo.Autograph
+	b.Age = userInfo.Age
+
+	b.Diamond = charmInfo.CharmpointsNumber
 
 	return b, nil
 }

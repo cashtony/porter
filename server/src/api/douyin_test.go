@@ -7,7 +7,7 @@ import (
 func TestNewApiDouyinUser(t *testing.T) {
 	shareURL := "https://v.douyin.com/qKDMXG/"
 
-	d, err := NewAPIDouyinUser(shareURL)
+	d, err := NewAPIWebDouyinUser(shareURL)
 	if err != nil {
 		t.Fatal(err)
 	}

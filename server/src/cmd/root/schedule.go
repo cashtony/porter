@@ -64,18 +64,21 @@ func ScheduleFetchNewVideo() {
 		return
 	}
 
-	bdUsers := make([]*TableBaiduUser, 0)
-	result := DB.Model(&TableBaiduUser{}).Where("douyin_url != ''").Find(&bdUsers)
+	douyinSecUIDs := make([]string, 0)
+	result := DB.Model(&TableBaiduUser{}).
+		Select("sec_uid").
+		Joins("left join douyin_users on douyin_users.uid = baidu_users.douyin_uid").
+		Where("douyin_uid != ''").Find(&douyinSecUIDs)
 	if result.Error != nil {
 		wlog.Error("获取百度用户时发生错误:", result.Error)
 		return
 	}
 
-	for _, u := range bdUsers {
+	for _, secUID := range douyinSecUIDs {
 		// 发布任务
 		t := &task.TaskParseVideo{
-			Type:     define.ParseVideoTypeOnePage,
-			ShareURL: u.DouyinURL,
+			Type:   define.ParseVideoTypeOnePage,
+			SecUID: secUID,
 		}
 		data, err := json.Marshal(t)
 		if err != nil {

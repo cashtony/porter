@@ -47,3 +47,11 @@ export function deleteUser(data) {
         data
     })
 }
+
+export function addBaiduUser(data) {
+    return request({
+        url: '/baidu/user/add',
+        method: 'post',
+        data
+    })
+}

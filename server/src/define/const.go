@@ -1,6 +1,17 @@
 package define
 
 const (
+	// DesktopUserAgent 电脑端浏览器标识
+	DesktopUserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.132 Safari/537.36"
+	// MobileUserAgent 移动端浏览器标识
+	// MobileUserAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 11_0 like Mac OS X) AppleWebKit/604.1.38 (KHTML, like Gecko) Version/11.0 Mobile/15A372 Safari/604.1"
+	MobileUserAgent = "Mozilla/5.0 (Linux; Android 5.0; SM-G900P Build/LRX21T) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.66 Mobile Safari/537.36"
+)
+
+const (
+	// uid + secuid = shareurl
+	//https://www.iesdouyin.com/share/user/85360271068?sec_uid=MS4wLjABAAAAIDmLNkp3nh_FSyrQ2bCgzd6TFzqenApEIg_-A60evTI
+
 	// 按awemeid获取视频信息 https://www.iesdouyin.com/web/api/v2/aweme/iteminfo/?item_ids=6834090710124236043
 	GetVideoURI = "https://www.iesdouyin.com/web/api/v2/aweme/iteminfo/"
 	// 按uri下载无水印视频 https://aweme.snssdk.com/aweme/v1/play/?video_id=v0200f7b0000brbp0h64tqbtfrkkjqlg&ratio=(720p,540p)&line=0
@@ -43,6 +54,11 @@ var (
 
 	TaskParseVideoTopic       = "TaskParseVideo"
 	TaskParseVideoResultTopic = "TaskParseVideoResult"
+
+	TaskSearchKeyword  = "TaskSearchKeyword"
+	TaskParseDouyinURL = "TaskParseDouyinURL"
+
+	TaskAddDouyinUser = "TaskAddDouyinUser"
 )
 
 const (

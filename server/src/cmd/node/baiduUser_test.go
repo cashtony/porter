@@ -1,6 +1,7 @@
 package main
 
 import (
+	"porter/util"
 	"testing"
 )
 
@@ -15,7 +16,7 @@ import (
 func TestFilterCharacter(t *testing.T) {
 	str := "舒舒🍪"
 	want := "舒舒"
-	result := filterSpecial(str)
+	result := util.FilterSpecial(str)
 	if want != result {
 		t.Error("过滤不一致", result)
 	}

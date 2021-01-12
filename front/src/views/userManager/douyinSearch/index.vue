@@ -5,12 +5,22 @@
       label-width="120px"
       element-loading-text="拼命加载中"
     >
-      <el-form-item label="账号信息">
+      <el-form-item label="抖音用户搜索">
         <el-input
           v-model="content"
           type="textarea"
           :autosize="{ minRows: 5 }"
-          placeholder="百度bduss 抖音分享链接"
+          placeholder="每行一个关键字"
+        />
+      </el-form-item>
+
+      <el-form-item label="数量">
+        <el-input-number
+          v-model="num"
+          :min="1"
+          :max="500"
+          size="mini"
+          label="增加搜索到的前多少个号"
         />
       </el-form-item>
       <el-form-item>
@@ -24,20 +34,21 @@
 </template>
 
 <script>
-import { bindAdd } from '@/api/table'
+import { searchDouyin } from '@/api/douyin'
 
 export default {
   name: 'AddAccount',
   data() {
     return {
       content: '',
-      loading: false
+      loading: false,
+      num: 100
     }
   },
   methods: {
     onSubmit() {
       this.loading = true
-      bindAdd({ content: this.content })
+      searchDouyin({ content: this.content, total: this.num })
         .then(response => {
           this.$message.success('成功')
           this.content = ''

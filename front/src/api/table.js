@@ -1,20 +1,5 @@
 import request from '@/utils/request'
 
-export function getDouyinUserList(data) {
-  return request({
-    url: '/douyin/user/list',
-    method: 'post',
-    data
-  })
-}
-
-export function getDouyinUserVideo(data) {
-  return request({
-    url: '/douyin/videoList',
-    method: 'post',
-    data
-  })
-}
 export function bindAdd(data) {
   return request({
     url: '/bind/add',

@@ -33,6 +33,12 @@
       >
         搜索
       </el-button>
+      <el-button
+        type="primary"
+        @click="onAddBaiduUser"
+      >
+        增加用户
+      </el-button>
 
       <el-button
         type="primary"
@@ -40,6 +46,7 @@
       >
         导出excel
       </el-button>
+
     </div>
 
     <el-table
@@ -111,15 +118,7 @@
           <span>{{ scope.row.videoCount }}</span>
         </template>
       </el-table-column>
-      <el-table-column
-        label="抖音链接"
-        width="150"
-        align="center"
-      >
-        <template slot-scope="scope">
-          <span>{{ scope.row.douyinURL }}</span>
-        </template>
-      </el-table-column>
+
       <el-table-column
         label="抖音UID"
         width="150"
@@ -238,6 +237,30 @@
         </el-button>
       </div>
     </el-dialog>
+
+    <el-dialog
+      title="增加新百度账号"
+      :visible.sync="AddBaiduDialogFormVisible"
+    >
+
+      <el-form>
+        <el-form-item label="账号信息">
+          <el-input
+            v-model="inputAddBaiduUser"
+            type="textarea"
+            :autosize="{ minRows: 5, maxRows:20 }"
+            placeholder="一行一个百度bduss,可批量输入"
+          />
+        </el-form-item>
+        <el-form-item>
+          <el-button
+            type="primary"
+            @click="onSubmitAddBaiduUser"
+          >提交</el-button>
+        </el-form-item>
+      </el-form>
+
+    </el-dialog>
   </div>
 </template>
 
@@ -246,7 +269,8 @@ import {
   getBaiduUserList,
   editBaiduUser,
   changeStatus,
-  deleteUser
+  deleteUser,
+  addBaiduUser
 } from '@/api/baidu'
 const searchTypeOptions = [
   { key: 'nickname', display_name: '昵称' },
@@ -281,7 +305,9 @@ export default {
       dialogStatus: 'update',
       searchTypeOptions,
       searchType: searchTypeOptions[0].key,
-      searchData: ''
+      searchData: '',
+      AddBaiduDialogFormVisible: false,
+      inputAddBaiduUser: ''
     }
   },
   created() {
@@ -399,7 +425,6 @@ export default {
     onSortChange(data) {
       this.resetOrder()
       const { prop, order } = data
-      console.log('prop:', prop)
       switch (prop) {
         case 'diamond':
           this.sortByDiamond(order)
@@ -425,6 +450,25 @@ export default {
         this.listQuery.createTimeSort = '-createTime'
       }
       this.fetchData()
+    },
+    onAddBaiduUser() {
+      this.AddBaiduDialogFormVisible = true
+    },
+    onSubmitAddBaiduUser() {
+      addBaiduUser({ content: this.inputAddBaiduUser })
+        .then(response => {
+          this.$notify({
+            title: '增加成功',
+            type: 'success',
+            duration: 2000
+          })
+
+          this.AddBaiduDialogFormVisible = false
+          this.fetchData()
+        })
+        .catch(message => {
+          this.AddBaiduDialogFormVisible = false
+        })
     }
   }
 }

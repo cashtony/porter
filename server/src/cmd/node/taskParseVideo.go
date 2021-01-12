@@ -5,6 +5,7 @@ import (
 	"porter/api"
 	"porter/define"
 	"porter/task"
+	"porter/util"
 	"porter/wlog"
 	"time"
 
@@ -26,12 +27,12 @@ func (*TaskParseVideoHandler) HandleMessage(m *nsq.Message) error {
 	}
 
 	ThreadTraffic <- 1
-	go excuteParseVideo(parseVideo.Type, parseVideo.ShareURL)
+	go excuteParseVideo(parseVideo.Type, parseVideo.SecUID)
 
 	return nil
 }
 
-func excuteParseVideo(t define.ParseVideoType, shareURL string) {
+func excuteParseVideo(t define.ParseVideoType, secUID string) {
 	defer func() {
 		<-ThreadTraffic
 	}()
@@ -40,18 +41,18 @@ func excuteParseVideo(t define.ParseVideoType, shareURL string) {
 		nextCursor int64 = 0
 		page             = 1
 	)
-	apiDouyinUser, err := api.NewAPIDouyinUser(shareURL)
+
+	apiDouyinUser, err := api.NewPhoneDouyinUser(secUID)
 	if err != nil {
-		wlog.Error("解析抖音用户数据失败:", shareURL, err)
+		wlog.Error("解析抖音用户数据失败:", secUID, err)
 		return
 	}
 
-	secUID := api.GetSecID(shareURL)
-	secSig := GetSecSig(shareURL)
-	nickname := filterSpecial(apiDouyinUser.Nickname)
+	nickname := util.FilterSpecial(apiDouyinUser.User.Nickname)
 	for {
+		time.Sleep(1 * time.Second)
 		wlog.Debugf("开始解析[%s]第[%d]页视频 \n", nickname, page)
-		apiVideoList, newCursor, err := api.GetDouyinVideo(secUID, secSig, nextCursor)
+		apiVideoList, newCursor, err := api.MobileDouyinVideo(secUID, nextCursor)
 		if err != nil {
 			wlog.Error("获取单页视频发生错误:", err)
 			return
@@ -65,16 +66,16 @@ func excuteParseVideo(t define.ParseVideoType, shareURL string) {
 			tableVideoList = append(tableVideoList, &define.TableDouyinVideo{
 				AwemeID:    v.AwemeID,
 				Desc:       v.Desc,
-				DouyinUID:  apiDouyinUser.UID,
-				Vid:        v.Video.Vid,
+				DouyinUID:  apiDouyinUser.User.UID,
+				Vid:        v.Video.PlayAddr.URI,
 				Duration:   v.Video.Duration,
 				CreateTime: time.Unix(videoExtraInfo.ItemList[0].CreateTime, 0),
 			})
 		}
 
 		result := task.TaskParseVideoResult{
-			DouyinNickname: apiDouyinUser.Nickname,
-			DouyinUID:      apiDouyinUser.UID,
+			DouyinNickname: apiDouyinUser.User.Nickname,
+			DouyinUID:      apiDouyinUser.User.UID,
 			List:           tableVideoList,
 		}
 
