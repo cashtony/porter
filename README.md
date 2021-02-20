@@ -7,4 +7,22 @@ Porter是一个将视频从抖音搬运到全民小视频的项目,前端为Vue+
 4. 无水印视频下载并上传到全民小视频;
 5. 将抖音用户信息自动同步到指定的全民小视频账号;
 
-个人研究型项目,有些地方的代码比较随意请见谅.
+个人研究型项目,有些地方的代码比较粗糙请见谅,欢迎提交PR.
+
+# 项目截图
+
+<p align="center">
+  <img width="900" src="https://raw.githubusercontent.com/huwei365/porter/master/document/images/douyinUsers.PNG">
+</p>
+
+<p align="center">
+  <img width="900" src="https://raw.githubusercontent.com/huwei365/porter/master/document/images/keywordsSearch.PNG">
+</p>
+
+<p align="center">
+  <img width="900" src="https://raw.githubusercontent.com/huwei365/porter/master/document/images/baiduUser.PNG">
+</p>
+
+<p align="center">
+  <img width="900" src="https://raw.githubusercontent.com/huwei365/porter/master/document/images/statistic.PNG">
+</p>
